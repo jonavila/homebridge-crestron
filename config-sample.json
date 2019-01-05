@@ -1,0 +1,40 @@
+{
+  "bridge": {
+    "name": "Homebridge",
+    "username": "CC:22:3D:E3:CE:30",
+    "port": 51826,
+    "pin": "031-45-154"
+  },
+
+  "platforms": [
+    {
+      "platform": "Crestron",
+      "name": "MC3",
+      "host": "192.168.1.6",
+      "port": "9050",
+      "devices": [
+        {
+          "id": 1,
+          "type": "LightSwitch",
+          "name": "Lights 1",
+          "manufacturer": "Crestron",
+          "model": "CLW-SWEX-P"
+        },
+        {
+          "id": 2,
+          "type": "LightSwitch",
+          "name": "Lights 2",
+          "manufacturer": "Crestron",
+          "model": "CLW-SWEX-P"
+        },
+        {
+          "id": 1,
+          "type": "LightDimmer",
+          "name": "Dimmer 1",
+          "manufacturer": "Crestron",
+          "model": "CLW-DIMEX-P"
+        }
+      ]
+    }
+  ]
+}
