@@ -1,6 +1,3 @@
-using System;
-using System.Text;
-using Crestron.SimplSharp; // For Basic SIMPL# Classes
 using Newtonsoft.Json;
 
 namespace SSharpHomebridge
@@ -17,7 +14,11 @@ namespace SSharpHomebridge
 
     public class MessageBroker
     {
-        public Message Message;
+        public delegate void MessageHandler(Message message);
+
+        public static event MessageHandler OnLightSwitchMessage;
+        public static event MessageHandler OnLightDimmerMessage;
+        public static event MessageHandler OnGenericSwitchMessage;
         /// <summary>
         /// SIMPL+ can only execute the default constructor. If you have variables that require initialization, please
         /// use an Initialize method
@@ -26,14 +27,44 @@ namespace SSharpHomebridge
         {
         }
 
-        public void ParseMessage(string messageJson)
+        public static void TriggerLightSwitchMessage(Message message)
         {
-            Message = JsonConvert.DeserializeObject<Message>(messageJson);
+            OnLightSwitchMessage(message);
         }
 
-        public string SerializeMessage()
+        public static void TriggerLightDimmerMessage(Message message)
         {
-            return JsonConvert.SerializeObject(Message);
+            OnLightDimmerMessage(message);
+        }
+
+        public static void TriggerGenericSwitchMessage(Message message)
+        {
+            OnGenericSwitchMessage(message);
+        }
+
+        public static void ParseMessage(string messageJson)
+        {
+            var message = JsonConvert.DeserializeObject<Message>(messageJson);
+
+            switch (message.DeviceType)
+            {
+                case "LightSwitch":
+                    TriggerLightSwitchMessage(message);
+                    break;
+
+                case "LightDimmer":
+                    TriggerLightDimmerMessage(message);
+                    break;
+
+                case "GenericSwitch":
+                    TriggerGenericSwitchMessage(message);
+                    break;
+            }
+        }
+
+        public static string SerializeMessage(Message message)
+        {
+            return JsonConvert.SerializeObject(message);
         }
     }
 }

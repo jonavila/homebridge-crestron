@@ -104,7 +104,6 @@ STRING_PARAMETER IPAddress[16];
 
 SIGNED_INTEGER doServerConnected;
 STRING InternalRxBuffer[65000];
-MessageBroker Broker;
 
 /*******************************************************************************************
   Functions
@@ -116,6 +115,9 @@ MessageBroker Broker;
 Function StartServer()
 {
    	SIGNED_INTEGER Status;
+	RegisterEvent(MessageBroker, OnLightSwitchMessage, LightSwitchMessageHandler);
+	RegisterEvent(MessageBroker, OnLightDimmerMessage, LightDimmerMessageHandler);
+	RegisterEvent(MessageBroker, OnGenericSwitchMessage, GenericSwitchMessageHandler);
 	Status = SocketServerStartListen(TCPServer, IPAddress, Port);
 
 	if (status < 0) {
@@ -134,201 +136,162 @@ Function SocketTx(STRING ServerTx)
     if (Status < 0) {
 		Print("Error Sending to TCPServer: %d\n", Status);
     } else {
-		//Print("Sent %s\n", ServerTx);
+		// Print("Sent %s\n", ServerTx);
 	}
 }
 
-Function HandleLightSwitchMessage(STRING MessageType, INTEGER DeviceId, STRING Operation, STRING Property, INTEGER Value)
+EventHandler LightSwitchMessageHandler(Message msg)
 {
 	INTEGER IsOn;
+	INTEGER Value;
 	STRING ServerTx[500];
-	IsOn = Light_IsOn[DeviceId];
+	IsOn = Light_IsOn[msg.DeviceId];
 
-	if (MessageType = "Request" && Operation = "Get" && Property = "Power")
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
 	{
 		Value = IsOn;
-		Broker.Message.Value = Value;
-		Broker.Message.MessageType = "Response";
-		ServerTx = Broker.SerializeMessage() + "||";
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
 		SocketTx(ServerTx);
 	}
 
-	if (MessageType = "Request" && Operation = "Set" && Property = "Power")
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
 	{
-		Value = Broker.Message.Value;
+		Value = msg.Value;
 
 		if (Value = 1 && IsOn = 0)
 		{
-			PULSE(1, Light_On[DeviceId]);
+			PULSE(1, Light_On[msg.DeviceId]);
 		}
 		if (Value = 0 && IsOn = 1)
 		{
-			PULSE(1, Light_Off[DeviceId]);
+			PULSE(1, Light_Off[msg.DeviceId]);
 		}
 	}
 
-	if (MessageType = "Event" && Operation = "Set" && Property = "Power")
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
 	{
-		ServerTx = Broker.SerializeMessage() + "||";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
 		SocketTx(ServerTx);
 	}
 }
 
-Function HandleLightDimmerMessage(STRING MessageType, INTEGER DeviceId, STRING Operation, STRING Property, INTEGER Value)
+EventHandler LightDimmerMessageHandler(Message msg)
 {
 	INTEGER IsOn;
 	INTEGER Level;
+	INTEGER Value;
 	STRING ServerTx[500];
-	IsOn = DimLight_IsOn[DeviceId];
-	Level = DimLight_Level[DeviceId];
+	IsOn = DimLight_IsOn[msg.DeviceId];
+	Level = DimLight_Level[msg.DeviceId];
 
-	if (MessageType = "Request" && Operation = "Get" && Property = "Power")
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
 	{
 		Value = IsOn;
-		Broker.Message.Value = Value;
-		Broker.Message.MessageType = "Response";
-		ServerTx = Broker.SerializeMessage() + "||";
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
 		SocketTx(ServerTx);
 	}
 
-	if (MessageType = "Request" && Operation = "Get" && Property = "Level")
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Level")
 	{
 		Value = Level;
-		Broker.Message.Value = Value;
-		Broker.Message.MessageType = "Response";
-		ServerTx = Broker.SerializeMessage() + "||";
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
 		SocketTx(ServerTx);
 	}
 
-	if (MessageType = "Request" && Operation = "Set" && Property = "Power")
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
 	{
-		Value = Broker.Message.Value;
+		Value = msg.Value;
 
 		if (Value = 1 && IsOn = 0)
 		{
-			PULSE(1, DimLight_On[DeviceId]);
+			PULSE(1, DimLight_On[msg.DeviceId]);
 		}
 
 		if (Value = 0 && IsOn = 1)
 		{
-			PULSE(1, DimLight_Off[DeviceId]);
+			PULSE(1, DimLight_Off[msg.DeviceId]);
 		}
 	}
 
-	if (MessageType = "Request" && Operation = "Set" && Property = "Level")
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Level")
 	{
-		Value = Broker.Message.Value;
+		Value = msg.Value;
 
 		if (Value = 65535)
 		{
-			PULSE(1, DimLight_On[DeviceId]);
+			PULSE(1, DimLight_On[msg.DeviceId]);
 		}
 		else
 		{
-			DimLight_Set[DeviceId] = Value;
+			DimLight_Set[msg.DeviceId] = Value;
 		}
 	}
 
-	if (MessageType = "Event" && Operation = "Set" && Property = "Power")
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
 	{
-		ServerTx = Broker.SerializeMessage() + "||";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
 		SocketTx(ServerTx);
 	}
 
-	if (MessageType = "Event" && Operation = "Set" && Property = "Level")
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Level")
 	{
-		ServerTx = Broker.SerializeMessage() + "||";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
 		SocketTx(ServerTx);
 	}
 }
 
-Function HandleGenericSwitchMessage(STRING MessageType, INTEGER DeviceId, STRING Operation, STRING Property, INTEGER Value)
+EventHandler GenericSwitchMessageHandler(Message msg)
 {
 	INTEGER IsOn;
+	INTEGER Value;
 	STRING ServerTx[500];
-	IsOn = Switch_IsOn[DeviceId];
+	IsOn = Switch_IsOn[msg.DeviceId];
 
-	if (MessageType = "Request" && Operation = "Get" && Property = "Power")
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
 	{
 		Value = IsOn;
-		Broker.Message.Value = Value;
-		Broker.Message.MessageType = "Response";
-		ServerTx = Broker.SerializeMessage() + "||";
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
 		SocketTx(ServerTx);
 	}
 
-	if (MessageType = "Request" && Operation = "Set" && Property = "Power")
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
 	{
-		Value = Broker.Message.Value;
+		Value = msg.Value;
 
 		if (Value = 1 && IsOn = 0)
 		{
-			PULSE(1, Switch_On[DeviceId]);
+			PULSE(1, Switch_On[msg.DeviceId]);
 		}
 		if (Value = 0 && IsOn = 1)
 		{
-			PULSE(1, Switch_Off[DeviceId]);
+			PULSE(1, Switch_Off[msg.DeviceId]);
 		}
 	}
 
-	if (MessageType = "Event" && Operation = "Set" && Property = "Power")
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
 	{
-		ServerTx = Broker.SerializeMessage() + "||";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
 		SocketTx(ServerTx);
 	}
-}
-
-Function ProcessMessage(STRING MessageJson)
-{
-	INTEGER DeviceId;
-	STRING DeviceType[50];
-	STRING MessageType[50];
-	STRING Operation[50];
-	STRING Property[50];
-	INTEGER Value;
-
-	Broker.ParseMessage(MessageJson);
-	DeviceId = Broker.Message.DeviceId;
-	DeviceType = Broker.Message.DeviceType;
-	MessageType = Broker.Message.MessageType;
-	Operation = Broker.Message.Operation;
-	Property = Broker.Message.Property;
-
-	if (DeviceType = "LightSwitch")
-	{
-		HandleLightSwitchMessage(MessageType, DeviceId, Operation, Property, Value);
-	}
-
-	if (DeviceType = "LightDimmer")
-	{
-		HandleLightDimmerMessage(MessageType, DeviceId, Operation, Property, Value);
-	}
-
-	if (DeviceType = "GenericSwitch")
-	{
-		HandleGenericSwitchMessage(MessageType, DeviceId, Operation, Property, Value);
-	}
-
-}
-
-Function ChangeMessageOnEvent(STRING MessageType, STRING DeviceType, INTEGER DeviceId, STRING Operation, STRING Property, INTEGER Value)
-{
-	Broker.Message.MessageType = MessageType;
-	Broker.Message.DeviceType = DeviceType;
-	Broker.Message.DeviceId = DeviceId;
-	Broker.Message.Operation = Operation;
-	Broker.Message.Property = Property;
-	Broker.Message.Value = Value;
 }
 
 Function SocketRx()
 {
-	// Print("InternalRxBuffer: %s\n", InternalRxBuffer);
 	STRING Temp$[65000];
-    WHILE (LEN(InternalRxBuffer) > 1) {
-		Temp$ = REMOVE("||",InternalRxBuffer);
-    	Temp$ = LEFT(Temp$, (Len(Temp$)-2));
-		ProcessMessage(Temp$);
+	// Print("InternalRxBuffer: %s\n", InternalRxBuffer);
+    While (Len(InternalRxBuffer) > 1)
+	{
+		Temp$ = Remove("||",InternalRxBuffer);
+    	Temp$ = Left(Temp$, (Len(Temp$)-2));
+		MessageBroker.ParseMessage(Temp$);
 	}
 }
 
@@ -339,34 +302,58 @@ Function SocketRx()
 
 CHANGE Light_IsOn
 {
+	Message msg;
 	INTEGER Id;
 	Id = GetLastModifiedArrayIndex();
-	ChangeMessageOnEvent("Event", "LightSwitch", Id, "Set", "Power", Light_IsOn[Id]);
-	HandleLightSwitchMessage(Broker.Message.MessageType, Broker.Message.DeviceId, Broker.Message.Operation, Broker.Message.Property, Broker.Message.Value);
+	msg.MessageType = "Event";
+	msg.DeviceType = "LightSwitch";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = Light_IsOn[Id];
+	MessageBroker.TriggerLightSwitchMessage(msg);
 }
 
 CHANGE DimLight_IsOn
 {
+	Message msg;
 	INTEGER Id;
 	Id = GetLastModifiedArrayIndex();
-	ChangeMessageOnEvent("Event", "LightDimmer", Id, "Set", "Power", DimLight_IsOn[Id]);
-	HandleLightDimmerMessage(Broker.Message.MessageType, Broker.Message.DeviceId, Broker.Message.Operation, Broker.Message.Property, Broker.Message.Value);
+	msg.MessageType = "Event";
+	msg.DeviceType = "LightDimmer";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = DimLight_IsOn[Id];
+	MessageBroker.TriggerLightDimmerMessage(msg);
 }
 
 CHANGE DimLight_Level
 {
+	Message msg;
 	INTEGER Id;
 	Id = GetLastModifiedArrayIndex();
-	ChangeMessageOnEvent("Event", "LightDimmer", Id, "Set", "Level", DimLight_Level[Id]);
-	HandleLightDimmerMessage(Broker.Message.MessageType, Broker.Message.DeviceId, Broker.Message.Operation, Broker.Message.Property, Broker.Message.Value);
+	msg.MessageType = "Event";
+	msg.DeviceType = "LightDimmer";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Level";
+	msg.Value = DimLight_Level[Id];
+	MessageBroker.TriggerLightDimmerMessage(msg);
 }
 
 CHANGE Switch_IsOn
 {
+	Message msg;
 	INTEGER Id;
 	Id = GetLastModifiedArrayIndex();
-	ChangeMessageOnEvent("Event", "GenericSwitch", Id, "Set", "Power", Switch_IsOn[Id]);
-	HandleGenericSwitchMessage(Broker.Message.MessageType, Broker.Message.DeviceId, Broker.Message.Operation, Broker.Message.Property, Broker.Message.Value);
+	msg.MessageType = "Event";
+	msg.DeviceType = "GenericSwitch";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = Switch_IsOn[Id];
+	MessageBroker.TriggerGenericSwitchMessage(msg);
 }
 
 SOCKETCONNECT TCPServer
