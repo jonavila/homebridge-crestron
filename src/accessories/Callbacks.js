@@ -122,7 +122,7 @@ export function getLightLevel(callback) {
 
   platform.socket.write(jsonMessage);
   platform.socket.pendingGetRequests.set(
-    `${this.type}-${this.id}-'Level'`,
+    `${this.type}-${this.id}-Level`,
     jsonMessage
   );
 

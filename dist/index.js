@@ -3043,7 +3043,7 @@ function getLightLevel(callback) {
     Property: 'Level'
   })}||`;
   platform.socket.write(jsonMessage);
-  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-'Level'`, jsonMessage);
+  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-Level`, jsonMessage);
   api.once(`Response-${this.type}-${this.id}-Get-Level`, value => {
     platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Level`);
     const percentLevel = value * 100 / 65535;
@@ -3272,7 +3272,25 @@ class Platform {
 
     this.socket.connect(port, host, () => {
       this.log(`Connected to the Crestron Processor @ ${host}`);
-    });
+    }); // Retry pending `Get` and `Set` Requests every 2 seconds
+
+    setInterval(() => {
+      if (!this.socket.pending) {
+        if (this.socket.pendingGetRequests.size > 0) {
+          this.socket.pendingGetRequests.forEach((value, key) => {
+            this.log(`Retrying get request: ${key}`);
+            this.socket.write(value);
+          });
+        }
+
+        if (this.socket.pendingSetRequests.size > 0) {
+          this.socket.pendingSetRequests.forEach((value, key) => {
+            this.log(`Retrying set request: ${key}`);
+            this.socket.write(value);
+          });
+        }
+      }
+    }, 2000);
     /*
       Handle messages received from Crestron
       Since messages are received in a TCP socket stream, we use a double-pipe (||)
