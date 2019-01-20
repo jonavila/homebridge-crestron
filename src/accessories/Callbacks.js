@@ -55,12 +55,17 @@ export function setPowerState(powered, callback) {
     event to fire for the same device. If no event is fired for `Set Level`, we
     will process the `Set Power` request, otherwise we simply notify Homebridge
     that the `Set Power` was successful and we delegate the command to the
-    Brightness characteristic
+    Brightness characteristic. The above logic also applies to Fans and rotation
+    speed.
    */
-  if (this.type === 'LightDimmer' && powered) {
+  if ((this.type === 'LightDimmer' || this.type === 'Fan') && powered) {
     let isLevelAlsoSet = false;
 
-    if (this.lightBulbService.characteristics[0].value) {
+    if (
+      (this.type === 'LightDimmer' &&
+        this.lightBulbService.characteristics[0].value) ||
+      (this.type === 'Fan' && this.fanService.characteristics[0].value)
+    ) {
       callback();
 
       return;
@@ -149,6 +154,54 @@ export function setLightLevel(percentLevel, callback) {
 
   api.once(`Response-${this.type}-${this.id}-Set-Level`, () => {
     platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Level`);
+    callback();
+  });
+}
+
+export function getFanSpeed(callback) {
+  const { platform } = this;
+  const { api } = platform;
+  const jsonMessage = `${JSON.stringify({
+    DeviceId: this.id,
+    DeviceType: this.type,
+    MessageType: 'Request',
+    Operation: 'Get',
+    Property: 'Speed'
+  })}||`;
+  platform.socket.write(jsonMessage);
+  platform.socket.pendingGetRequests.set(
+    `${this.type}-${this.id}-Speed`,
+    jsonMessage
+  );
+
+  api.once(`Response-${this.type}-${this.id}-Get-Speed`, value => {
+    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Speed`);
+    const speed = value;
+    callback(null, speed);
+  });
+}
+
+export function setFanSpeed(speed, callback) {
+  const { platform } = this;
+  const { api } = platform;
+  const jsonMessage = `${JSON.stringify({
+    DeviceId: this.id,
+    DeviceType: this.type,
+    MessageType: 'Request',
+    Operation: 'Set',
+    Property: 'Speed',
+    Value: speed
+  })}||`;
+
+  this.platform.socket.write(jsonMessage);
+  api.emit(`Request-${this.type}-${this.id}-Set-Speed`);
+  platform.socket.pendingSetRequests.set(
+    `${this.type}-${this.id}-Speed`,
+    jsonMessage
+  );
+
+  api.once(`Response-${this.type}-${this.id}-Set-Speed`, () => {
+    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Speed`);
     callback();
   });
 }

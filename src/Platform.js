@@ -1,5 +1,6 @@
 import { each, groupBy } from 'lodash-es';
 import net from 'net';
+import { Fan } from './accessories/Fan';
 import { GenericSwitch } from './accessories/GenericSwitch';
 import { LightDimmer } from './accessories/LightDimmer';
 import { LightSwitch } from './accessories/LightSwitch';
@@ -135,6 +136,10 @@ export class Platform {
 
           case 'GenericSwitch':
             accessories.push(new GenericSwitch(this.log, device, this));
+            return;
+
+          case 'Fan':
+            accessories.push(new Fan(this.log, device, this));
             return;
         }
       });

@@ -43,6 +43,11 @@ DIGITAL_INPUT DimLight_IsOn[50];
 DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_;
 DIGITAL_INPUT Switch_IsOn[50];
 DIGITAL_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_;
+DIGITAL_INPUT Fan_IsHigh[10];
+DIGITAL_INPUT Fan_IsMed[10];
+DIGITAL_INPUT Fan_IsLow[10];
+DIGITAL_INPUT Fan_IsOff[10];
+DIGITAL_INPUT _SKIP_;
 
 ANALOG_INPUT DimLight_Level[50];
 ANALOG_INPUT _SKIP_;
@@ -53,6 +58,10 @@ DIGITAL_OUTPUT DimLight_On[50];
 DIGITAL_OUTPUT DimLight_Off[50];
 DIGITAL_OUTPUT Switch_On[50];
 DIGITAL_OUTPUT Switch_Off[50];
+DIGITAL_OUTPUT Fan_High[10];
+DIGITAL_OUTPUT Fan_Med[10];
+DIGITAL_OUTPUT Fan_Low[10];
+DIGITAL_OUTPUT Fan_Off[10];
 DIGITAL_OUTPUT _SKIP_;
 
 ANALOG_OUTPUT DimLight_Set[50];
@@ -118,6 +127,7 @@ Function StartServer()
 	RegisterEvent(MessageBroker, OnLightSwitchMessage, LightSwitchMessageHandler);
 	RegisterEvent(MessageBroker, OnLightDimmerMessage, LightDimmerMessageHandler);
 	RegisterEvent(MessageBroker, OnGenericSwitchMessage, GenericSwitchMessageHandler);
+	RegisterEvent(MessageBroker, OnFanMessage, FanMessageHandler);
 	Status = SocketServerStartListen(TCPServer, IPAddress, Port);
 
 	if (status < 0) {
@@ -283,6 +293,103 @@ EventHandler GenericSwitchMessageHandler(Message msg)
 	}
 }
 
+EventHandler FanMessageHandler(Message msg)
+{
+	INTEGER IsOff;
+	INTEGER IsLow;
+	INTEGER IsMed;
+	INTEGER IsHigh;
+	INTEGER Value;
+	STRING ServerTx[500];
+	IsOff = Fan_IsOff[msg.DeviceId];
+	IsLow = Fan_IsLow[msg.DeviceId];
+	IsMed = Fan_IsMed[msg.DeviceId];
+	IsHigh = Fan_IsHigh[msg.DeviceId];
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Power")
+	{
+		Value = IsOff;
+
+		if (Value = 1)
+		{
+			Value = 0;
+		}
+		else
+		{
+			Value = 1;
+		}
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Get" && msg.Property = "Speed")
+	{
+		if (IsLow = 1)
+		{
+			Value = 33;
+		}
+		if (IsMed = 1)
+		{
+			Value = 66;
+		}
+		if (IsHigh = 1)
+		{
+			Value = 100;
+		}
+
+		msg.Value = Value;
+		msg.MessageType = "Response";
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		Value = msg.Value;
+
+		if (Value = 1 && IsOff = 1)
+		{
+			PULSE(1, Fan_High[msg.DeviceId]);
+		}
+		if (Value = 0 && IsOff = 0)
+		{
+			PULSE(1, Fan_Off[msg.DeviceId]);
+		}
+	}
+
+	if (msg.MessageType = "Request" && msg.Operation = "Set" && msg.Property = "Speed")
+	{
+		Value = msg.Value;
+
+		if (Value <= 33)
+		{
+			PULSE(1, Fan_Low[msg.DeviceId]);
+		}
+		else if (Value <= 66)
+		{
+			PULSE(1, Fan_Med[msg.DeviceId]);
+		}
+		else
+		{
+			PULSE(1, Fan_High[msg.DeviceId]);
+		}
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")
+	{
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+
+	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Speed")
+	{
+		ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+		SocketTx(ServerTx);
+	}
+}
+
 Function SocketRx()
 {
 	STRING Temp$[65000];
@@ -354,6 +461,81 @@ CHANGE Switch_IsOn
 	msg.Property = "Power";
 	msg.Value = Switch_IsOn[Id];
 	MessageBroker.TriggerGenericSwitchMessage(msg);
+}
+
+CHANGE Fan_IsOff
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	msg.MessageType = "Event";
+	msg.DeviceType = "Fan";
+	msg.DeviceId = Id;
+	msg.Operation = "Set";
+	msg.Property = "Power";
+	msg.Value = Fan_IsOff[Id];
+
+	if (msg.Value = 1)
+	{
+		msg.Value = 0;
+	}
+	else
+	{
+		msg.Value = 1;
+	}
+
+	MessageBroker.TriggerFanMessage(msg);
+}
+
+CHANGE Fan_IsLow
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	if (Fan_IsLow[Id] = 1)
+	{
+		msg.MessageType = "Event";
+		msg.DeviceType = "Fan";
+		msg.DeviceId = Id;
+		msg.Operation = "Set";
+		msg.Property = "Speed";
+		msg.Value = 33;
+		MessageBroker.TriggerFanMessage(msg);
+	}
+}
+
+CHANGE Fan_IsMed
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	if (Fan_IsMed[Id] = 1)
+	{
+		msg.MessageType = "Event";
+		msg.DeviceType = "Fan";
+		msg.DeviceId = Id;
+		msg.Operation = "Set";
+		msg.Property = "Speed";
+		msg.Value = 66;
+		MessageBroker.TriggerFanMessage(msg);
+	}
+}
+
+CHANGE Fan_IsHigh
+{
+	Message msg;
+	INTEGER Id;
+	Id = GetLastModifiedArrayIndex();
+	if (Fan_IsHigh[Id] = 1)
+	{
+		msg.MessageType = "Event";
+		msg.DeviceType = "Fan";
+		msg.DeviceId = Id;
+		msg.Operation = "Set";
+		msg.Property = "Speed";
+		msg.Value = 100;
+		MessageBroker.TriggerFanMessage(msg);
+	}
 }
 
 SOCKETCONNECT TCPServer
