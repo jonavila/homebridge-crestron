@@ -41,6 +41,25 @@ export class Platform {
       }
     );
 
+    // Retry pending `Get` and `Set` Requests every 2 seconds
+    setInterval(() => {
+      if (!this.socket.pending) {
+        if (this.socket.pendingGetRequests.size > 0) {
+          this.socket.pendingGetRequests.forEach((value, key) => {
+            this.log(`Retrying get request: ${key}`);
+            this.socket.write(value);
+          });
+        }
+
+        if (this.socket.pendingSetRequests.size > 0) {
+          this.socket.pendingSetRequests.forEach((value, key) => {
+            this.log(`Retrying set request: ${key}`);
+            this.socket.write(value);
+          });
+        }
+      }
+    }, 2000);
+
     /*
       Handle messages received from Crestron
       Since messages are received in a TCP socket stream, we use a double-pipe (||)
