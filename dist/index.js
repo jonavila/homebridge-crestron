@@ -2992,24 +2992,16 @@ function setPowerState(powered, callback) {
     event to fire for the same device. If no event is fired for `Set Level`, we
     will process the `Set Power` request, otherwise we simply notify Homebridge
     that the `Set Power` was successful and we delegate the command to the
-    Brightness characteristic
+    Brightness characteristic. The above logic also applies to Fans and rotation
+    speed.
    */
 
   if ((this.type === 'LightDimmer' || this.type === 'Fan') && powered) {
     let isLevelAlsoSet = false;
 
-    if (this.type === 'LightDimmer') {
-      if (this.lightBulbService.characteristics[0].value) {
-        callback();
-        return;
-      }
-    }
-
-    if (this.type === 'Fan') {
-      if (this.fanService.characteristics[0].value) {
-        callback();
-        return;
-      }
+    if (this.type === 'LightDimmer' && this.lightBulbService.characteristics[0].value || this.type === 'Fan' && this.fanService.characteristics[0].value) {
+      callback();
+      return;
     }
 
     setTimeout(() => {
