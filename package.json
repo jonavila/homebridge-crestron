@@ -1,6 +1,6 @@
 {
   "name": "homebridge-crestron",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Crestron support for Homebridge",
   "engines": {
     "node": ">=8.11.4",
