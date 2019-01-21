@@ -174,9 +174,15 @@ EventHandler LightSwitchMessageHandler(Message msg)
 		{
 			PULSE(1, Light_On[msg.DeviceId]);
 		}
-		if (Value = 0 && IsOn = 1)
+		else if (Value = 0 && IsOn = 1)
 		{
 			PULSE(1, Light_Off[msg.DeviceId]);
+		}
+		else
+		{
+			msg.MessageType = "Response";
+			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+			SocketTx(ServerTx);
 		}
 	}
 
@@ -222,10 +228,15 @@ EventHandler LightDimmerMessageHandler(Message msg)
 		{
 			PULSE(1, DimLight_On[msg.DeviceId]);
 		}
-
-		if (Value = 0 && IsOn = 1)
+		else if (Value = 0 && IsOn = 1)
 		{
 			PULSE(1, DimLight_Off[msg.DeviceId]);
+		}
+		else
+		{
+			msg.MessageType = "Response";
+			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+			SocketTx(ServerTx);
 		}
 	}
 
@@ -280,9 +291,15 @@ EventHandler GenericSwitchMessageHandler(Message msg)
 		{
 			PULSE(1, Switch_On[msg.DeviceId]);
 		}
-		if (Value = 0 && IsOn = 1)
+		else if (Value = 0 && IsOn = 1)
 		{
 			PULSE(1, Switch_Off[msg.DeviceId]);
+		}
+		else
+		{
+			msg.MessageType = "Response";
+			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+			SocketTx(ServerTx);
 		}
 	}
 
@@ -353,9 +370,15 @@ EventHandler FanMessageHandler(Message msg)
 		{
 			PULSE(1, Fan_High[msg.DeviceId]);
 		}
-		if (Value = 0 && IsOff = 0)
+		else if (Value = 0 && IsOff = 0)
 		{
 			PULSE(1, Fan_Off[msg.DeviceId]);
+		}
+		else
+		{
+			msg.MessageType = "Response";
+			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+			SocketTx(ServerTx);
 		}
 	}
 
@@ -590,5 +613,3 @@ Function Main()
 	StartServer();
     Print("Program started!!!.\n");
 }
-
-
