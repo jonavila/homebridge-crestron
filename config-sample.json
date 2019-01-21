@@ -33,6 +33,13 @@
           "name": "Dimmer 1",
           "manufacturer": "Crestron",
           "model": "CLW-DIMEX-P"
+        },
+        {
+          "id": 1,
+          "type": "Fan",
+          "name": "Fan 1",
+          "manufacturer": "Crestron",
+          "model": "CLC-FANDELVEX-W"
         }
       ]
     }
