@@ -1988,7 +1988,7 @@ function equalObjects(object, other, bitmask, customizer, equalFunc, stack) {
 var DataView = getNative(root, 'DataView');
 
 /* Built-in method references that are verified to be native. */
-var Promise = getNative(root, 'Promise');
+var Promise$1 = getNative(root, 'Promise');
 
 /* Built-in method references that are verified to be native. */
 var Set = getNative(root, 'Set');
@@ -2008,7 +2008,7 @@ var dataViewTag$2 = '[object DataView]';
 /** Used to detect maps, sets, and weakmaps. */
 var dataViewCtorString = toSource(DataView),
     mapCtorString = toSource(Map$1),
-    promiseCtorString = toSource(Promise),
+    promiseCtorString = toSource(Promise$1),
     setCtorString = toSource(Set),
     weakMapCtorString = toSource(WeakMap);
 
@@ -2024,7 +2024,7 @@ var getTag = baseGetTag;
 // Fallback for data views, maps, sets, and weak maps in IE 11 and promises in Node.js < 6.
 if ((DataView && getTag(new DataView(new ArrayBuffer(1))) != dataViewTag$2) ||
     (Map$1 && getTag(new Map$1) != mapTag$2) ||
-    (Promise && getTag(Promise.resolve()) != promiseTag) ||
+    (Promise$1 && getTag(Promise$1.resolve()) != promiseTag) ||
     (Set && getTag(new Set) != setTag$2) ||
     (WeakMap && getTag(new WeakMap) != weakMapTag$1)) {
   getTag = function(value) {
@@ -2910,6 +2910,29 @@ function forEach(collection, iteratee) {
   return func(collection, castFunction(iteratee));
 }
 
+function retry({
+  fn,
+  retriesLeft = 1,
+  timeout = 2000
+}, ...fnArgs) {
+  return new Promise((resolve, reject) => {
+    return fn(...fnArgs, timeout).then(resolve).catch(error => {
+      if (retriesLeft === 0) {
+        reject(error);
+        return;
+      }
+
+      setTimeout(() => {
+        retry({
+          fn,
+          retriesLeft: retriesLeft - 1,
+          timeout
+        }, ...fnArgs).catch(() => {});
+      }, timeout);
+    });
+  });
+}
+
 class BaseAccessory {
   constructor(log, accessoryConfig, platform) {
     this.log = log;
@@ -2918,6 +2941,9 @@ class BaseAccessory {
     this.name = accessoryConfig.name;
     this.manufacturer = accessoryConfig.manufacturer;
     this.model = accessoryConfig.model;
+    this.getTimeout = accessoryConfig.getTimeout;
+    this.setTimeout = accessoryConfig.setTimeout;
+    this.retries = accessoryConfig.retries;
     this.platform = platform;
     const {
       hap: {
@@ -2937,185 +2963,234 @@ class BaseAccessory {
 
 }
 
-function getPowerState(callback) {
-  const {
-    platform
-  } = this;
-  const {
-    api
-  } = platform;
-  const jsonMessage = `${JSON.stringify({
-    DeviceId: this.id,
-    DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Get',
-    Property: 'Power'
-  })}||`;
-  platform.socket.write(jsonMessage);
-  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-Power`, jsonMessage); // handle response to `Get` Power requests
+function getPowerState(callback, timeout) {
+  return new Promise((resolve, reject) => {
+    const {
+      platform
+    } = this;
+    const {
+      api
+    } = platform;
+    const jsonMessage = `${JSON.stringify({
+      DeviceId: this.id,
+      DeviceType: this.type,
+      MessageType: 'Request',
+      Operation: 'Get',
+      Property: 'Power'
+    })}||`;
+    platform.socket.write(jsonMessage);
+    platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-Power`, jsonMessage); // handle response to `Get` Power requests
 
-  api.once(`Response-${this.type}-${this.id}-Get-Power`, value => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Power`);
-    const powered = Boolean(value);
-    callback(null, powered);
-  });
-}
-function setPowerState(powered, callback) {
-  const {
-    platform
-  } = this;
-  const {
-    api
-  } = platform;
-  const jsonMessage = `${JSON.stringify({
-    DeviceId: this.id,
-    DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Set',
-    Property: 'Power',
-    Value: powered ? 1 : 0
-  })}||`;
-  /*
-    Logic to handle Apple's Home app Dimmer behavior:
-     Apple's Home app sets a Power and Brightness characteristic when interacting
-    with dimmer controls. If both `Power` and `Level` messages are received by
-    Crestron in rapid succession, the Brightness/Level setting may be lost due to
-    a potential analog ramp triggered on the dimmer.
-     (Note: When powering off the dimmer, only the Power is set and no Brightness
-    is set)
-     To work around this behavior, we first check if the `Set Power` command is
-    from a dimmer and if the command is to `Power On` the device. If the device
-    is already powered on, we stop any further processing and notify Homebridge.
-    We check on the device's `On` state by reading the value from the `On`
-    characteristic in the `lighBulbService`.
-     If the device is off, we pause processing for 50 ms and wait for a `Set Level`
-    event to fire for the same device. If no event is fired for `Set Level`, we
-    will process the `Set Power` request, otherwise we simply notify Homebridge
-    that the `Set Power` was successful and we delegate the command to the
-    Brightness characteristic. The above logic also applies to Fans and rotation
-    speed.
-   */
-
-  if ((this.type === 'LightDimmer' || this.type === 'Fan') && powered) {
-    let isLevelAlsoSet = false;
-
-    if (this.type === 'LightDimmer' && this.lightBulbService.characteristics[0].value || this.type === 'Fan' && this.fanService.characteristics[0].value) {
-      callback();
-      return;
-    }
-
+    api.once(`Response-${this.type}-${this.id}-Get-Power`, value => {
+      platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Power`);
+      const powered = Boolean(value);
+      callback(null, powered);
+      resolve();
+    });
     setTimeout(() => {
-      if (!isLevelAlsoSet) {
-        this.platform.socket.write(jsonMessage);
-        platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-Power`, jsonMessage);
-        api.once(`Response-${this.type}-${this.id}-Set-Power`, () => {
-          platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Power`);
-          callback();
-        });
-      } else {
+      api.removeAllListeners(`Response-${this.type}-${this.id}-Get-Power`);
+      reject(`Time out hit on: Response-${this.type}-${this.id}-Get-Power`);
+    }, timeout);
+  });
+}
+function setPowerState(powered, callback, timeout) {
+  return new Promise((resolve, reject) => {
+    const {
+      platform
+    } = this;
+    const {
+      api
+    } = platform;
+    const jsonMessage = `${JSON.stringify({
+      DeviceId: this.id,
+      DeviceType: this.type,
+      MessageType: 'Request',
+      Operation: 'Set',
+      Property: 'Power',
+      Value: powered ? 1 : 0
+    })}||`;
+    /*
+      Logic to handle Apple's Home app Dimmer behavior:
+         Apple's Home app sets a Power and Brightness characteristic when interacting
+      with dimmer controls. If both `Power` and `Level` messages are received by
+      Crestron in rapid succession, the Brightness/Level setting may be lost due to
+      a potential analog ramp triggered on the dimmer.
+         (Note: When powering off the dimmer, only the Power is set and no Brightness
+      is set)
+         To work around this behavior, we first check if the `Set Power` command is
+      from a dimmer and if the command is to `Power On` the device. If the device
+      is already powered on, we stop any further processing and notify Homebridge.
+      We check on the device's `On` state by reading the value from the `On`
+      characteristic in the `lighBulbService`.
+         If the device is off, we pause processing for 50 ms and wait for a `Set Level`
+      event to fire for the same device. If no event is fired for `Set Level`, we
+      will process the `Set Power` request, otherwise we simply notify Homebridge
+      that the `Set Power` was successful and we delegate the command to the
+      Brightness characteristic. The above logic also applies to Fans and rotation
+      speed.
+     */
+
+    if ((this.type === 'LightDimmer' || this.type === 'Fan') && powered) {
+      let isLevelAlsoSet = false;
+
+      if (this.type === 'LightDimmer' && this.lightBulbService.characteristics[0].value || this.type === 'Fan' && this.fanService.characteristics[0].value) {
         callback();
+        resolve();
+        return;
       }
-    }, 50);
-    api.once(`Request-${this.type}-${this.id}-Set-Level`, () => {
-      isLevelAlsoSet = true;
+
+      setTimeout(() => {
+        if (!isLevelAlsoSet) {
+          this.platform.socket.write(jsonMessage);
+          platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-Power`, jsonMessage);
+          api.once(`Response-${this.type}-${this.id}-Set-Power`, () => {
+            platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Power`);
+            callback();
+            resolve();
+          });
+          setTimeout(() => {
+            api.removeAllListeners(`Response-${this.type}-${this.id}-Set-Power`);
+            reject(`Time out hit on: Response-${this.type}-${this.id}-Set-Power`);
+          }, timeout);
+        } else {
+          callback();
+          resolve();
+        }
+      }, 50);
+      api.once(`Request-${this.type}-${this.id}-Set-Level`, () => {
+        isLevelAlsoSet = true;
+      });
+    } else {
+      this.platform.socket.write(jsonMessage);
+      platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-Power`, jsonMessage);
+      api.once(`Response-${this.type}-${this.id}-Set-Power`, () => {
+        platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Power`);
+        callback();
+        resolve();
+      });
+      setTimeout(() => {
+        api.removeAllListeners(`Response-${this.type}-${this.id}-Set-Power`);
+        reject(`Time out hit on: Response-${this.type}-${this.id}-Set-Power`);
+      }, timeout);
+    }
+  });
+}
+function getLightLevel(callback, timeout) {
+  return new Promise((resolve, reject) => {
+    const {
+      platform
+    } = this;
+    const {
+      api
+    } = platform;
+    const jsonMessage = `${JSON.stringify({
+      DeviceId: this.id,
+      DeviceType: this.type,
+      MessageType: 'Request',
+      Operation: 'Get',
+      Property: 'Level'
+    })}||`;
+    platform.socket.write(jsonMessage);
+    platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-Level`, jsonMessage);
+    api.once(`Response-${this.type}-${this.id}-Get-Level`, value => {
+      platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Level`);
+      const percentLevel = value * 100 / 65535;
+      callback(null, percentLevel);
+      resolve();
     });
-  } else {
+    setTimeout(() => {
+      api.removeAllListeners(`Response-${this.type}-${this.id}-Get-Level`);
+      reject(`Time out hit on: Response-${this.type}-${this.id}-Get-Level`);
+    }, timeout);
+  });
+}
+function setLightLevel(percentLevel, callback, timeout) {
+  return new Promise((resolve, reject) => {
+    const {
+      platform
+    } = this;
+    const {
+      api
+    } = platform;
+    const jsonMessage = `${JSON.stringify({
+      DeviceId: this.id,
+      DeviceType: this.type,
+      MessageType: 'Request',
+      Operation: 'Set',
+      Property: 'Level',
+      Value: percentLevel / 100 * 65535
+    })}||`;
     this.platform.socket.write(jsonMessage);
-    platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-Power`, jsonMessage);
-    api.once(`Response-${this.type}-${this.id}-Set-Power`, () => {
-      platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Power`);
+    api.emit(`Request-${this.type}-${this.id}-Set-Level`);
+    platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-Level`, jsonMessage);
+    api.once(`Response-${this.type}-${this.id}-Set-Level`, () => {
+      platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Level`);
       callback();
+      resolve();
     });
-  }
-}
-function getLightLevel(callback) {
-  const {
-    platform
-  } = this;
-  const {
-    api
-  } = platform;
-  const jsonMessage = `${JSON.stringify({
-    DeviceId: this.id,
-    DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Get',
-    Property: 'Level'
-  })}||`;
-  platform.socket.write(jsonMessage);
-  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-Level`, jsonMessage);
-  api.once(`Response-${this.type}-${this.id}-Get-Level`, value => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Level`);
-    const percentLevel = value * 100 / 65535;
-    callback(null, percentLevel);
+    setTimeout(() => {
+      api.removeAllListeners(`Response-${this.type}-${this.id}-Set-Level`);
+      reject(`Time out hit on: Response-${this.type}-${this.id}-Set-Level`);
+    }, timeout);
   });
 }
-function setLightLevel(percentLevel, callback) {
-  const {
-    platform
-  } = this;
-  const {
-    api
-  } = platform;
-  const jsonMessage = `${JSON.stringify({
-    DeviceId: this.id,
-    DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Set',
-    Property: 'Level',
-    Value: percentLevel / 100 * 65535
-  })}||`;
-  this.platform.socket.write(jsonMessage);
-  api.emit(`Request-${this.type}-${this.id}-Set-Level`);
-  platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-Level`, jsonMessage);
-  api.once(`Response-${this.type}-${this.id}-Set-Level`, () => {
-    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Level`);
-    callback();
+function getFanSpeed(callback, timeout) {
+  return new Promise((resolve, reject) => {
+    const {
+      platform
+    } = this;
+    const {
+      api
+    } = platform;
+    const jsonMessage = `${JSON.stringify({
+      DeviceId: this.id,
+      DeviceType: this.type,
+      MessageType: 'Request',
+      Operation: 'Get',
+      Property: 'Speed'
+    })}||`;
+    platform.socket.write(jsonMessage);
+    platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-Speed`, jsonMessage);
+    api.once(`Response-${this.type}-${this.id}-Get-Speed`, value => {
+      platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Speed`);
+      const speed = value;
+      callback(null, speed);
+      resolve();
+    });
+    setTimeout(() => {
+      api.removeAllListeners(`Response-${this.type}-${this.id}-Get-Speed`);
+      reject(`Time out hit on: Response-${this.type}-${this.id}-Get-Speed`);
+    }, timeout);
   });
 }
-function getFanSpeed(callback) {
-  const {
-    platform
-  } = this;
-  const {
-    api
-  } = platform;
-  const jsonMessage = `${JSON.stringify({
-    DeviceId: this.id,
-    DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Get',
-    Property: 'Speed'
-  })}||`;
-  platform.socket.write(jsonMessage);
-  platform.socket.pendingGetRequests.set(`${this.type}-${this.id}-Speed`, jsonMessage);
-  api.once(`Response-${this.type}-${this.id}-Get-Speed`, value => {
-    platform.socket.pendingGetRequests.delete(`${this.type}-${this.id}-Speed`);
-    const speed = value;
-    callback(null, speed);
-  });
-}
-function setFanSpeed(speed, callback) {
-  const {
-    platform
-  } = this;
-  const {
-    api
-  } = platform;
-  const jsonMessage = `${JSON.stringify({
-    DeviceId: this.id,
-    DeviceType: this.type,
-    MessageType: 'Request',
-    Operation: 'Set',
-    Property: 'Speed',
-    Value: speed
-  })}||`;
-  this.platform.socket.write(jsonMessage);
-  api.emit(`Request-${this.type}-${this.id}-Set-Speed`);
-  platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-Speed`, jsonMessage);
-  api.once(`Response-${this.type}-${this.id}-Set-Speed`, () => {
-    platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Speed`);
-    callback();
+function setFanSpeed(speed, callback, timeout) {
+  return new Promise((resolve, reject) => {
+    const {
+      platform
+    } = this;
+    const {
+      api
+    } = platform;
+    const jsonMessage = `${JSON.stringify({
+      DeviceId: this.id,
+      DeviceType: this.type,
+      MessageType: 'Request',
+      Operation: 'Set',
+      Property: 'Speed',
+      Value: speed
+    })}||`;
+    this.platform.socket.write(jsonMessage);
+    api.emit(`Request-${this.type}-${this.id}-Set-Speed`);
+    platform.socket.pendingSetRequests.set(`${this.type}-${this.id}-Speed`, jsonMessage);
+    api.once(`Response-${this.type}-${this.id}-Set-Speed`, () => {
+      platform.socket.pendingSetRequests.delete(`${this.type}-${this.id}-Speed`);
+      callback();
+      resolve();
+    });
+    setTimeout(() => {
+      api.removeAllListeners(`Response-${this.type}-${this.id}-Set-Speed`);
+      reject(`Time out hit on: Response-${this.type}-${this.id}-Set-Speed`);
+    }, timeout);
   });
 }
 
@@ -3138,8 +3213,32 @@ class Fan extends BaseAccessory {
       }
     } = api;
     const fanService = new Service.Fan();
-    const powerState = fanService.getCharacteristic(Characteristic.On).on('get', getPowerState.bind(this)).on('set', setPowerState.bind(this));
-    const fanSpeed = fanService.getCharacteristic(Characteristic.RotationSpeed).on('get', getFanSpeed.bind(this)).on('set', setFanSpeed.bind(this));
+    const powerState = fanService.getCharacteristic(Characteristic.On).on('get', callback => {
+      retry({
+        fn: getPowerState.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.getTimeout
+      }, callback);
+    }).on('set', (powered, callback) => {
+      retry({
+        fn: setPowerState.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.setTimeout
+      }, powered, callback);
+    });
+    const fanSpeed = fanService.getCharacteristic(Characteristic.RotationSpeed).on('get', callback => {
+      retry({
+        fn: getFanSpeed.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.getTimeout
+      }, callback);
+    }).on('set', (speed, callback) => {
+      retry({
+        fn: setFanSpeed.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.setTimeout
+      }, speed, callback);
+    });
     this.fanService = fanService;
     api.on(`Event-${this.type}-${this.id}-Set-Power`, value => {
       powerState.updateValue(Boolean(value));
@@ -3171,8 +3270,20 @@ class GenericSwitch extends BaseAccessory {
       }
     } = api;
     const switchService = new Service.Switch();
-    const powerState = switchService.getCharacteristic(Characteristic.On).on('get', getPowerState.bind(this)).on('set', setPowerState.bind(this));
-    this.lightBulbService = switchService;
+    const powerState = switchService.getCharacteristic(Characteristic.On).on('get', callback => {
+      retry({
+        fn: getPowerState.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.getTimeout
+      }, callback);
+    }).on('set', (powered, callback) => {
+      retry({
+        fn: setPowerState.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.setTimeout
+      }, powered, callback);
+    });
+    this.switchService = switchService;
     api.on(`Event-${this.type}-${this.id}-Set-Power`, value => {
       powerState.updateValue(Boolean(value));
     });
@@ -3200,8 +3311,32 @@ class LightDimmer extends BaseAccessory {
       }
     } = api;
     const lightBulbService = new Service.Lightbulb();
-    const powerState = lightBulbService.getCharacteristic(Characteristic.On).on('get', getPowerState.bind(this)).on('set', setPowerState.bind(this));
-    const lightLevel = lightBulbService.getCharacteristic(Characteristic.Brightness).on('get', getLightLevel.bind(this)).on('set', setLightLevel.bind(this));
+    const powerState = lightBulbService.getCharacteristic(Characteristic.On).on('get', callback => {
+      retry({
+        fn: getPowerState.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.getTimeout
+      }, callback);
+    }).on('set', (powered, callback) => {
+      retry({
+        fn: setPowerState.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.setTimeout
+      }, powered, callback);
+    });
+    const lightLevel = lightBulbService.getCharacteristic(Characteristic.Brightness).on('get', callback => {
+      retry({
+        fn: getLightLevel.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.getTimeout
+      }, callback);
+    }).on('set', (powered, callback) => {
+      retry({
+        fn: setLightLevel.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.setTimeout
+      }, powered, callback);
+    });
     this.lightBulbService = lightBulbService;
     api.on(`Event-${this.type}-${this.id}-Set-Power`, value => {
       powerState.updateValue(Boolean(value));
@@ -3233,7 +3368,19 @@ class LightSwitch extends BaseAccessory {
       }
     } = api;
     const lightBulbService = new Service.Lightbulb();
-    const powerState = lightBulbService.getCharacteristic(Characteristic.On).on('get', getPowerState.bind(this)).on('set', setPowerState.bind(this));
+    const powerState = lightBulbService.getCharacteristic(Characteristic.On).on('get', callback => {
+      retry({
+        fn: getPowerState.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.getTimeout
+      }, callback);
+    }).on('set', (powered, callback) => {
+      retry({
+        fn: setPowerState.bind(this),
+        retriesLeft: this.retries,
+        timeout: this.setTimeout
+      }, powered, callback);
+    });
     this.lightBulbService = lightBulbService;
     api.on(`Event-${this.type}-${this.id}-Set-Power`, value => {
       powerState.updateValue(Boolean(value));
@@ -3272,25 +3419,7 @@ class Platform {
 
     this.socket.connect(port, host, () => {
       this.log(`Connected to the Crestron Processor @ ${host}`);
-    }); // Retry pending `Get` and `Set` Requests every 2 seconds
-
-    setInterval(() => {
-      if (!this.socket.pending) {
-        if (this.socket.pendingGetRequests.size > 0) {
-          this.socket.pendingGetRequests.forEach((value, key) => {
-            this.log(`Retrying get request: ${key}`);
-            this.socket.write(value);
-          });
-        }
-
-        if (this.socket.pendingSetRequests.size > 0) {
-          this.socket.pendingSetRequests.forEach((value, key) => {
-            this.log(`Retrying set request: ${key}`);
-            this.socket.write(value);
-          });
-        }
-      }
-    }, 2000);
+    });
     /*
       Handle messages received from Crestron
       Since messages are received in a TCP socket stream, we use a double-pipe (||)

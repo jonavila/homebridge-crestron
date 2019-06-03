@@ -1,3 +1,4 @@
+import { retry } from '../helpers';
 import { BaseAccessory } from './BaseAccessory';
 import {
   getFanSpeed,
@@ -21,13 +22,51 @@ export class Fan extends BaseAccessory {
     const fanService = new Service.Fan();
     const powerState = fanService
       .getCharacteristic(Characteristic.On)
-      .on('get', getPowerState.bind(this))
-      .on('set', setPowerState.bind(this));
+      .on('get', callback => {
+        retry(
+          {
+            fn: getPowerState.bind(this),
+            retriesLeft: this.retries,
+            timeout: this.getTimeout
+          },
+          callback
+        );
+      })
+      .on('set', (powered, callback) => {
+        retry(
+          {
+            fn: setPowerState.bind(this),
+            retriesLeft: this.retries,
+            timeout: this.setTimeout
+          },
+          powered,
+          callback
+        );
+      });
 
     const fanSpeed = fanService
       .getCharacteristic(Characteristic.RotationSpeed)
-      .on('get', getFanSpeed.bind(this))
-      .on('set', setFanSpeed.bind(this));
+      .on('get', callback => {
+        retry(
+          {
+            fn: getFanSpeed.bind(this),
+            retriesLeft: this.retries,
+            timeout: this.getTimeout
+          },
+          callback
+        );
+      })
+      .on('set', (speed, callback) => {
+        retry(
+          {
+            fn: setFanSpeed.bind(this),
+            retriesLeft: this.retries,
+            timeout: this.setTimeout
+          },
+          speed,
+          callback
+        );
+      });
 
     this.fanService = fanService;
 

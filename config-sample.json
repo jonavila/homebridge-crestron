@@ -32,7 +32,10 @@
           "type": "LightDimmer",
           "name": "Dimmer 1",
           "manufacturer": "Crestron",
-          "model": "CLW-DIMEX-P"
+          "model": "CLW-DIMEX-P",
+          "getTimeout": 2000,
+          "setTimeout": 4000,
+          "retries": 3
         },
         {
           "id": 1,
