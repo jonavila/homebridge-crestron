@@ -1,3 +1,4 @@
+import { retry } from '../helpers';
 import { BaseAccessory } from './BaseAccessory';
 import {
   getLightLevel,
@@ -21,13 +22,51 @@ export class LightDimmer extends BaseAccessory {
     const lightBulbService = new Service.Lightbulb();
     const powerState = lightBulbService
       .getCharacteristic(Characteristic.On)
-      .on('get', getPowerState.bind(this))
-      .on('set', setPowerState.bind(this));
+      .on('get', callback => {
+        retry(
+          {
+            fn: getPowerState.bind(this),
+            retriesLeft: this.retries,
+            timeout: this.getTimeout
+          },
+          callback
+        );
+      })
+      .on('set', (powered, callback) => {
+        retry(
+          {
+            fn: setPowerState.bind(this),
+            retriesLeft: this.retries,
+            timeout: this.setTimeout
+          },
+          powered,
+          callback
+        );
+      });
 
     const lightLevel = lightBulbService
       .getCharacteristic(Characteristic.Brightness)
-      .on('get', getLightLevel.bind(this))
-      .on('set', setLightLevel.bind(this));
+      .on('get', callback => {
+        retry(
+          {
+            fn: getLightLevel.bind(this),
+            retriesLeft: this.retries,
+            timeout: this.getTimeout
+          },
+          callback
+        );
+      })
+      .on('set', (powered, callback) => {
+        retry(
+          {
+            fn: setLightLevel.bind(this),
+            retriesLeft: this.retries,
+            timeout: this.setTimeout
+          },
+          powered,
+          callback
+        );
+      });
 
     this.lightBulbService = lightBulbService;
 

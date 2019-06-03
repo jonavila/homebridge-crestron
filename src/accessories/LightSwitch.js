@@ -1,3 +1,4 @@
+import { retry } from '../helpers';
 import { BaseAccessory } from './BaseAccessory';
 import { getPowerState, setPowerState } from './Callbacks';
 
@@ -16,8 +17,27 @@ export class LightSwitch extends BaseAccessory {
     const lightBulbService = new Service.Lightbulb();
     const powerState = lightBulbService
       .getCharacteristic(Characteristic.On)
-      .on('get', getPowerState.bind(this))
-      .on('set', setPowerState.bind(this));
+      .on('get', callback => {
+        retry(
+          {
+            fn: getPowerState.bind(this),
+            retriesLeft: this.retries,
+            timeout: this.getTimeout
+          },
+          callback
+        );
+      })
+      .on('set', (powered, callback) => {
+        retry(
+          {
+            fn: setPowerState.bind(this),
+            retriesLeft: this.retries,
+            timeout: this.setTimeout
+          },
+          powered,
+          callback
+        );
+      });
 
     this.lightBulbService = lightBulbService;
 

@@ -6,6 +6,9 @@ export class BaseAccessory {
     this.name = accessoryConfig.name;
     this.manufacturer = accessoryConfig.manufacturer;
     this.model = accessoryConfig.model;
+    this.getTimeout = accessoryConfig.getTimeout;
+    this.setTimeout = accessoryConfig.setTimeout;
+    this.retries = accessoryConfig.retries;
     this.platform = platform;
     const {
       hap: { Characteristic, Service }
