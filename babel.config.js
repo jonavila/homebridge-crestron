@@ -2,7 +2,8 @@ module.exports = function(api) {
   api.cache.using(() => process.env.NODE_ENV === 'development');
 
   const presets = [
-    ['@babel/preset-env', { modules: false, targets: { node: 8 } }]
+    ['@babel/preset-env', { modules: false, targets: { node: 10 } }],
+    '@babel/preset-typescript'
   ];
 
   const plugins = [
