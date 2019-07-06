@@ -1,9 +1,9 @@
 {
   "name": "homebridge-crestron",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Crestron support for Homebridge",
   "engines": {
-    "node": ">=8.11.4",
+    "node": ">=10.15.0",
     "homebridge": ">=0.2.0"
   },
   "main": "dist/index.js",
@@ -16,24 +16,30 @@
   "author": "Jonathan Avila",
   "license": "MIT",
   "dependencies": {
-    "lodash-es": "^4.17.11"
+    "lodash-es": "4.17.11"
   },
   "devDependencies": {
-    "@babel/core": "^7.4.4",
-    "@babel/plugin-proposal-class-properties": "^7.4.4",
-    "@babel/preset-env": "^7.4.4",
-    "babel-plugin-lodash": "^3.3.4",
-    "hap-nodejs": "^0.4.51",
-    "homebridge": "^0.4.49",
-    "prettier": "^1.17.1",
-    "rollup": "^1.12.3",
-    "rollup-plugin-babel": "^4.3.2",
-    "rollup-plugin-commonjs": "^9.3.4",
-    "rollup-plugin-node-resolve": "^4.2.4"
+    "@babel/core": "7.5.0",
+    "@babel/plugin-proposal-class-properties": "7.5.0",
+    "@babel/preset-env": "7.5.0",
+    "@babel/preset-typescript": "7.3.3",
+    "@types/lodash-es": "4.17.3",
+    "babel-plugin-lodash": "3.3.4",
+    "hap-nodejs": "0.4.52",
+    "homebridge": "0.4.50",
+    "patch-package": "6.1.2",
+    "postinstall-postinstall": "2.0.0",
+    "prettier": "1.18.2",
+    "rollup": "1.16.6",
+    "rollup-plugin-babel": "4.3.3",
+    "rollup-plugin-commonjs": "10.0.1",
+    "rollup-plugin-node-resolve": "5.2.0",
+    "typescript": "3.5.2"
   },
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rollup -c",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "postinstall": "patch-package"
   }
 }

@@ -349,7 +349,7 @@ EventHandler FanMessageHandler(Message msg)
 		}
 		if (IsMed = 1)
 		{
-			Value = 66;
+			Value = 67;
 		}
 		if (IsHigh = 1)
 		{
@@ -386,18 +386,27 @@ EventHandler FanMessageHandler(Message msg)
 	{
 		Value = msg.Value;
 
-		if (Value <= 33)
+		if (Value = 0 && IsOff = 0) {
+			PULSE(1, Fan_Off[msg.DeviceId]);
+		}
+		else if (Value = 33 && IsLow <> 1)
 		{
 			PULSE(1, Fan_Low[msg.DeviceId]);
 		}
-		else if (Value <= 66)
+		else if (Value = 67 && IsMed <> 1)
 		{
 			PULSE(1, Fan_Med[msg.DeviceId]);
 		}
-		else
+		else if (Value = 100 && IsHigh <> 1)
 		{
 			PULSE(1, Fan_High[msg.DeviceId]);
 		}
+		else
+		{
+			msg.MessageType = "Event";
+			ServerTx = MessageBroker.SerializeMessage(msg) + "||";
+			SocketTx(ServerTx);
+		}		
 	}
 
 	if (msg.MessageType = "Event" && msg.Operation = "Set" && msg.Property = "Power")

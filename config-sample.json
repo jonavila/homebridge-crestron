@@ -32,10 +32,14 @@
           "type": "LightDimmer",
           "name": "Dimmer 1",
           "manufacturer": "Crestron",
-          "model": "CLW-DIMEX-P",
-          "getTimeout": 2000,
-          "setTimeout": 4000,
-          "retries": 3
+          "model": "CLW-DIMEX-P"
+        },
+        {
+          "id": 1,
+          "type": "GenericSwitch",
+          "name": "Switch 1",
+          "manufacturer": "DIRECTV",
+          "model": "HR-54"
         },
         {
           "id": 1,
