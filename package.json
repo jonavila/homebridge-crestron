@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "Crestron support for Homebridge",
   "engines": {
-    "node": ">=8.11.4",
+    "node": ">=10.15.0",
     "homebridge": ">=0.2.0"
   },
   "main": "dist/index.js",
