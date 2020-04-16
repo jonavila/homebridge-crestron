@@ -1,0 +1,10 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "@jonavila/homebridge-crestron": "2.0.3"
+  },
+  "changesets": [
+    "honest-squids-share"
+  ]
+}
