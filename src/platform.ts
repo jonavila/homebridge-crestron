@@ -1,17 +1,25 @@
-import { each, groupBy } from 'lodash-es';
 import net from 'net';
-import { BaseDevice, Fan, GenericSwitch, LightDimmer, LightSwitch } from './devices';
-import { DeviceType, Homebridge, PlatformConfig, PlatformLogger, Request } from './@types';
+import { Logging, PlatformConfig } from 'homebridge';
+import { HomebridgeAPI } from 'homebridge/lib/api';
+import { DeviceRequest, DeviceType } from './types';
+import {
+  BaseDevice,
+  Fan,
+  GenericSwitch,
+  LightDimmer,
+  LightSwitch,
+} from './devices';
+import { forEach, groupBy } from 'lodash';
 
 export class Platform {
-  log: PlatformLogger;
+  log: Logging;
   config: PlatformConfig;
-  api: Homebridge;
+  api: HomebridgeAPI;
   socket: net.Socket = new net.Socket();
   pendingGetRequests: Map<string, string> = new Map<string, string>();
   pendingSetRequests: Map<string, string> = new Map<string, string>();
 
-  constructor(log: PlatformLogger, config: PlatformConfig, api: Homebridge) {
+  constructor(log: Logging, config: PlatformConfig, api: HomebridgeAPI) {
     this.log = log;
     this.config = config;
     this.api = api;
@@ -51,14 +59,14 @@ export class Platform {
   accessories(callback: (accessories: BaseDevice[]) => void) {
     const accessories: BaseDevice[] = [];
     const { devices } = this.config;
-    const devicesByType = groupBy(devices, device => device.type);
+    const devicesByType = groupBy(devices, (device) => device.type);
 
     /*
       Here we register the accessories with Homebridge. We group the devices listed
       in the config file by type and we call the appropriate device constructor.
      */
-    each(devicesByType, (devices, type) => {
-      devices.forEach(config => {
+    forEach(devicesByType, (devices, type) => {
+      devices.forEach((config) => {
         switch (type as DeviceType) {
           case 'LightSwitch':
             accessories.push(new LightSwitch(this.log, config, this));
@@ -91,8 +99,8 @@ export class Platform {
     const jsonMessages = data
       .toString()
       .split('||')
-      .filter(jsonMessage => jsonMessage.length > 0);
-    jsonMessages.forEach(jsonMessage => {
+      .filter((jsonMessage) => jsonMessage.length > 0);
+    jsonMessages.forEach((jsonMessage) => {
       const message = JSON.parse(jsonMessage);
 
       const {
@@ -101,7 +109,7 @@ export class Platform {
         DeviceId: deviceId,
         Operation: operation,
         Property: property,
-        Value: value
+        Value: value,
       } = message;
 
       /*
@@ -120,18 +128,31 @@ export class Platform {
         not triggered by Homebridge (e.g. Keypad press). In this case, we emit a
         `Event` message and handle it accordingly.
        */
-      if (messageType === 'Event' && this.pendingSetRequests.has(`${deviceType}-${deviceId}-${property}`)) {
-        this.api.emit(`Response-${deviceType}-${deviceId}-${operation}-${property}`);
+      if (
+        messageType === 'Event' &&
+        this.pendingSetRequests.has(`${deviceType}-${deviceId}-${property}`)
+      ) {
+        this.api.emit(
+          `Response-${deviceType}-${deviceId}-${operation}-${property}`,
+        );
 
         return;
       }
 
-      this.api.emit(`${messageType}-${deviceType}-${deviceId}-${operation}-${property}`, value);
+      this.api.emit(
+        `${messageType}-${deviceType}-${deviceId}-${operation}-${property}`,
+        value,
+      );
     });
   }
 
-  removeRequest(request: Request) {
-    const { DeviceId: deviceId, DeviceType: deviceType, Operation: operation, Property: property } = request;
+  removeRequest(request: DeviceRequest) {
+    const {
+      DeviceId: deviceId,
+      DeviceType: deviceType,
+      Operation: operation,
+      Property: property,
+    } = request;
     const requestKey = `${deviceType}-${deviceId}-${property}`;
 
     if (operation === 'Get') {
@@ -141,8 +162,13 @@ export class Platform {
     }
   }
 
-  sendRequest(request: Request) {
-    const { DeviceId: deviceId, DeviceType: deviceType, Operation: operation, Property: property } = request;
+  sendRequest(request: DeviceRequest) {
+    const {
+      DeviceId: deviceId,
+      DeviceType: deviceType,
+      Operation: operation,
+      Property: property,
+    } = request;
     const requestKey = `${deviceType}-${deviceId}-${property}`;
     const requestBody = `${JSON.stringify(request)}||`;
     this.socket.write(requestBody);
