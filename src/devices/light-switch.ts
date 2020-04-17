@@ -15,10 +15,10 @@ export class LightSwitch extends BaseDevice {
     super(log, config, platform);
 
     const { id, type } = this.config;
-    const { api } = this.platform;
+    const { homebridge } = this.platform;
     const {
       hap: { Characteristic, Service },
-    } = api;
+    } = homebridge;
 
     const lightBulbService = new Service.Lightbulb(this.name, 'lightSwitch');
     lightBulbService.isPrimaryService = true;
@@ -72,7 +72,7 @@ export class LightSwitch extends BaseDevice {
         },
       );
 
-    api.on(`Event-${type}-${id}-Set-Power`, (on: number) => {
+    platform.on(`Event-${type}-${id}-Set-Power`, (on: number) => {
       onCharacteristic?.updateValue(Boolean(on));
     });
   }

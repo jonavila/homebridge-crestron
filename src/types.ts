@@ -1,12 +1,4 @@
-import { PlatformConfig as HomebridgePlatformConfig } from 'homebridge/lib/server';
-
-declare module 'homebridge/lib/api' {
-  interface HomebridgeAPI {
-    // Add EventEmitter emit and on types
-    on(event: string | symbol, listener: (...args: any[]) => void): this;
-    emit(event: string | symbol, ...args: any[]): boolean;
-  }
-}
+import { PlatformConfig as HomebridgePlatformConfig } from 'homebridge';
 
 export interface PlatformConfig extends HomebridgePlatformConfig {
   host: string;

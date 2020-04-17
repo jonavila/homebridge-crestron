@@ -1,7 +1,13 @@
 import net from 'net';
-import { Logging, PlatformConfig } from 'homebridge';
-import { HomebridgeAPI } from 'homebridge/lib/api';
+import {
+  AccessoryPlugin,
+  API,
+  Logging,
+  PlatformConfig,
+  StaticPlatformPlugin,
+} from 'homebridge';
 import { DeviceRequest, DeviceType } from './types';
+import EventEmitter from 'events';
 import {
   BaseDevice,
   Fan,
@@ -11,18 +17,19 @@ import {
 } from './devices';
 import { forEach, groupBy } from 'lodash-es';
 
-export class Platform {
+export class Platform extends EventEmitter implements StaticPlatformPlugin {
   log: Logging;
   config: PlatformConfig;
-  api: HomebridgeAPI;
+  homebridge: API;
   socket: net.Socket = new net.Socket();
   pendingGetRequests: Map<string, string> = new Map<string, string>();
   pendingSetRequests: Map<string, string> = new Map<string, string>();
 
-  constructor(log: Logging, config: PlatformConfig, api: HomebridgeAPI) {
+  constructor(log: Logging, config: PlatformConfig, api: API) {
+    super();
     this.log = log;
     this.config = config;
-    this.api = api;
+    this.homebridge = api;
     const { host, port } = this.config;
 
     // logs socket error messages
@@ -53,10 +60,12 @@ export class Platform {
     });
 
     // handle Homebridge launch
-    this.api.on('didFinishLaunching', () => this.log('DidFinishLaunching'));
+    this.homebridge.on('didFinishLaunching', () =>
+      this.log('DidFinishLaunching'),
+    );
   }
 
-  accessories(callback: (accessories: BaseDevice[]) => void) {
+  accessories(callback: (accessories: AccessoryPlugin[]) => void) {
     const accessories: BaseDevice[] = [];
     const { devices } = this.config;
     const devicesByType = groupBy(devices, (device) => device.type);
@@ -132,14 +141,14 @@ export class Platform {
         messageType === 'Event' &&
         this.pendingSetRequests.has(`${deviceType}-${deviceId}-${property}`)
       ) {
-        this.api.emit(
+        this.emit(
           `Response-${deviceType}-${deviceId}-${operation}-${property}`,
         );
 
         return;
       }
 
-      this.api.emit(
+      this.emit(
         `${messageType}-${deviceType}-${deviceId}-${operation}-${property}`,
         value,
       );

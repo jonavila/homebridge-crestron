@@ -1,11 +1,6 @@
-import { HomebridgeAPI } from 'homebridge/lib/api';
+import { API } from 'homebridge';
 import { Platform } from './platform';
 
-export default function (homebridge: HomebridgeAPI) {
-  homebridge.registerPlatform(
-    '@jonavila/homebridge-crestron',
-    'Crestron',
-    // @ts-ignore
-    Platform,
-  );
+export default function (homebridge: API) {
+  homebridge.registerPlatform('Crestron', Platform);
 }

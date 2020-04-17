@@ -1,8 +1,8 @@
-import { Logging, Service } from 'homebridge';
+import { AccessoryPlugin, Logging, Service } from 'homebridge';
 import { DeviceConfig, DeviceRequest } from '../types';
 import { Platform } from '../platform';
 
-export class BaseDevice {
+export class BaseDevice implements AccessoryPlugin {
   log: Logging;
   config: DeviceConfig;
   platform: Platform;
@@ -15,9 +15,10 @@ export class BaseDevice {
     this.platform = platform;
 
     const { name, manufacturer, model } = this.config;
+    const { homebridge } = this.platform;
     const {
       hap: { Characteristic, Service },
-    } = this.platform.api;
+    } = homebridge;
     this.name = name;
 
     const infoService = new Service.AccessoryInformation();
@@ -33,10 +34,6 @@ export class BaseDevice {
     return this.services;
   }
 
-  identify(callback: () => void) {
-    callback();
-  }
-
   async initRequest<T extends number | undefined>(
     request: DeviceRequest,
   ): Promise<T> {
@@ -49,11 +46,11 @@ export class BaseDevice {
     } = request;
 
     return new Promise<T>((resolve, reject) => {
-      const { api } = this.platform;
+      const { platform } = this;
       this.platform.sendRequest(request);
 
       const timeoutId = setTimeout(() => {
-        api.removeAllListeners(
+        platform.removeAllListeners(
           `Response-${type}-${id}-${operation}-${property}`,
         );
         const errorMessage = `The device ${this.name} failed to respond within ${REQUEST_TIMEOUT} ms. for the request ${operation} ${property}`;
@@ -62,7 +59,7 @@ export class BaseDevice {
         reject(Error(errorMessage));
       }, REQUEST_TIMEOUT);
 
-      api.once(
+      platform.once(
         `Response-${type}-${id}-${operation}-${property}`,
         (value: T) => {
           this.platform.removeRequest(request);

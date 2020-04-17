@@ -17,10 +17,10 @@ export class Fan extends BaseDevice {
     super(log, config, platform);
 
     const { id, type } = this.config;
-    const { api } = this.platform;
+    const { homebridge } = platform;
     const {
       hap: { Characteristic, Service },
-    } = api;
+    } = homebridge;
 
     const fanService = new Service.Fan(this.name, 'fan');
     fanService.isPrimaryService = true;
@@ -78,7 +78,7 @@ export class Fan extends BaseDevice {
         },
       );
 
-    api.on(`Event-${type}-${id}-Set-Power`, (on: number) => {
+    platform.on(`Event-${type}-${id}-Set-Power`, (on: number) => {
       onCharacteristic?.updateValue(Boolean(on));
     });
 
@@ -146,7 +146,7 @@ export class Fan extends BaseDevice {
         },
       );
 
-    api.on(`Event-${type}-${id}-Set-Speed`, (speed: number) => {
+    platform.on(`Event-${type}-${id}-Set-Speed`, (speed: number) => {
       rotationSpeedCharacteristic?.updateValue(speed);
     });
   }

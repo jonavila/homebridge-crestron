@@ -18,10 +18,10 @@ export class LightDimmer extends BaseDevice {
     super(log, config, platform);
 
     const { id, type } = this.config;
-    const { api } = this.platform;
+    const { homebridge } = this.platform;
     const {
       hap: { Characteristic, Service },
-    } = api;
+    } = homebridge;
 
     const lightBulbService = new Service.Lightbulb(this.name, 'lightSwitch');
     lightBulbService.isPrimaryService = true;
@@ -79,7 +79,7 @@ export class LightDimmer extends BaseDevice {
         },
       );
 
-    api.on(`Event-${type}-${id}-Set-Power`, (on: number) => {
+    platform.on(`Event-${type}-${id}-Set-Power`, (on: number) => {
       onCharacteristic?.updateValue(Boolean(on));
     });
 
@@ -135,7 +135,7 @@ export class LightDimmer extends BaseDevice {
         },
       );
 
-    api.on(`Event-${type}-${id}-Set-Level`, (level: number) => {
+    platform.on(`Event-${type}-${id}-Set-Level`, (level: number) => {
       brightnessCharacteristic?.updateValue((level * 100) / 65535);
     });
   }
