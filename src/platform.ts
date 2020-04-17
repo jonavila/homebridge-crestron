@@ -15,7 +15,7 @@ import {
   LightDimmer,
   LightSwitch,
 } from './devices';
-import { forEach, groupBy } from 'lodash-es';
+import { forEach, groupBy } from 'lodash';
 
 export class Platform extends EventEmitter implements StaticPlatformPlugin {
   log: Logging;
