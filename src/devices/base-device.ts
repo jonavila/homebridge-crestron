@@ -23,7 +23,6 @@ export class BaseDevice implements AccessoryPlugin {
 
     const infoService = new Service.AccessoryInformation();
     infoService
-      .setCharacteristic(Characteristic.Name, name)
       .setCharacteristic(Characteristic.Manufacturer, manufacturer)
       .setCharacteristic(Characteristic.Model, model);
 

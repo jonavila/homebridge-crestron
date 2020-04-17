@@ -6,15 +6,9 @@ import {
   PlatformConfig,
   StaticPlatformPlugin,
 } from 'homebridge';
-import { DeviceRequest, DeviceType } from './types';
+import { DeviceConfig, DeviceRequest, DeviceType } from './types';
 import EventEmitter from 'events';
-import {
-  BaseDevice,
-  Fan,
-  GenericSwitch,
-  LightDimmer,
-  LightSwitch,
-} from './devices';
+import { Fan, GenericSwitch, LightDimmer, LightSwitch } from './devices';
 import { forEach, groupBy } from 'lodash';
 
 export class Platform extends EventEmitter implements StaticPlatformPlugin {
@@ -66,7 +60,7 @@ export class Platform extends EventEmitter implements StaticPlatformPlugin {
   }
 
   accessories(callback: (accessories: AccessoryPlugin[]) => void) {
-    const accessories: BaseDevice[] = [];
+    const accessories: AccessoryPlugin[] = [];
     const { devices } = this.config;
     const devicesByType = groupBy(devices, (device) => device.type);
 
@@ -75,23 +69,34 @@ export class Platform extends EventEmitter implements StaticPlatformPlugin {
       in the config file by type and we call the appropriate device constructor.
      */
     forEach(devicesByType, (devices, type) => {
-      devices.forEach((config) => {
+      devices.forEach((config: DeviceConfig) => {
+        let accessory;
         switch (type as DeviceType) {
           case 'LightSwitch':
-            accessories.push(new LightSwitch(this.log, config, this));
-            return;
+            accessory = new LightSwitch(this.log, config, this);
+            break;
 
           case 'LightDimmer':
-            accessories.push(new LightDimmer(this.log, config, this));
-            return;
+            accessory = new LightDimmer(this.log, config, this);
+            break;
 
           case 'GenericSwitch':
-            accessories.push(new GenericSwitch(this.log, config, this));
-            return;
+            accessory = new GenericSwitch(this.log, config, this);
+            break;
 
           case 'Fan':
-            accessories.push(new Fan(this.log, config, this));
-            return;
+            accessory = new Fan(this.log, config, this);
+            break;
+
+          default:
+            this.log.warn(
+              `Unable to find an accessory constructor for device: ${config.name} with type: ${config.type}`,
+            );
+            break;
+        }
+
+        if (accessory) {
+          accessories.push(accessory);
         }
       });
     });
