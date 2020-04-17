@@ -5,6 +5,7 @@
     "@jonavila/homebridge-crestron": "2.0.3"
   },
   "changesets": [
+    "clean-shoes-return",
     "honest-squids-share"
   ]
 }
