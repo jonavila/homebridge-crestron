@@ -9,7 +9,7 @@ import {
   LightDimmer,
   LightSwitch,
 } from './devices';
-import { forEach, groupBy } from 'lodash';
+import { forEach, groupBy } from 'lodash-es';
 
 export class Platform {
   log: Logging;
