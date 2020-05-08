@@ -47,6 +47,14 @@
           "name": "Fan 1",
           "manufacturer": "Crestron",
           "model": "CLC-FANDELVEX-W"
+        },
+        {
+          "id": 1,
+          "type": "Television",
+          "name": "Television 1",
+          "manufacturer": "Panasonic",
+          "model": "TC-P50V10",
+          "timeout": 7000
         }
       ]
     }
