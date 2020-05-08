@@ -37,7 +37,7 @@ export class BaseDevice implements AccessoryPlugin {
     request: DeviceRequest,
     timeout?: number,
   ): Promise<T> {
-    const REQUEST_TIMEOUT = timeout || 2000;
+    const REQUEST_TIMEOUT = timeout || 3000;
     const { deviceId: id, deviceType: type, operation, property } = request;
 
     return new Promise<T>((resolve, reject) => {
