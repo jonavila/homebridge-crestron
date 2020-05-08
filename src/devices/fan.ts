@@ -4,7 +4,10 @@ import {
   CharacteristicGetCallback,
   CharacteristicSetCallback,
   CharacteristicValue,
+  Formats,
   Logging,
+  Perms,
+  Units,
 } from 'homebridge';
 import { DeviceConfig, DeviceRequest } from '../types';
 import { Platform } from '../platform';
@@ -86,12 +89,8 @@ export class Fan extends BaseDevice {
         maxValue: 100,
         minStep: 33.333,
         minValue: 0,
-        perms: [
-          Characteristic.Perms.READ,
-          Characteristic.Perms.WRITE,
-          Characteristic.Perms.NOTIFY,
-        ],
-        unit: Characteristic.Units.PERCENTAGE,
+        perms: [Perms.PAIRED_READ, Perms.PAIRED_WRITE, Perms.NOTIFY],
+        unit: Units.PERCENTAGE,
       })
       .on(
         CharacteristicEventTypes.GET,
