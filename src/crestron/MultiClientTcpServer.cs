@@ -62,10 +62,8 @@ namespace SSharpHomebridge
                 if (TcpServer == null || TcpServer.ServerSocketStatus == SocketStatus.SOCKET_STATUS_SOCKET_NOT_EXIST)
                 {
                     if (Debug > 0) CrestronConsole.PrintLine("TCP Server Creating New.");
-                    TcpServer = new TCPServer(IPAddress.Any.ToString(), Port, BufferSize, EthernetAdapterType.EthernetLANAdapter, MaxConnections)
-                    {
-                        SocketSendOrReceiveTimeOutInMs = 100000
-                    };
+                    TcpServer = new TCPServer(IPAddress.Any.ToString(), Port, BufferSize,
+                        EthernetAdapterType.EthernetLANAdapter, MaxConnections);
                     TcpServer.SocketStatusChange += SocketStatusChange;        //subscribe to class event, local C# method below
                     TcpServer.HandleLinkLoss();
                     TcpServer.HandleLinkUp();
