@@ -29,7 +29,7 @@ export class BaseDevice implements AccessoryPlugin {
     this.services = [infoService];
   }
 
-  getServices() {
+  getServices(): Service[] {
     return this.services;
   }
 
