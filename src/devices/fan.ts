@@ -28,16 +28,16 @@ export class Fan extends BaseDevice {
 
     const onCharacteristic = fanService
       .getCharacteristic(Characteristic.On)
-      ?.on(
+      .on(
         CharacteristicEventTypes.GET,
         async (callback: CharacteristicGetCallback) => {
           try {
             const request: DeviceRequest = {
-              DeviceId: id,
-              DeviceType: type,
-              MessageType: 'Request',
-              Operation: 'Get',
-              Property: 'Power',
+              deviceId: id,
+              deviceType: type,
+              messageType: 'Request',
+              operation: 'Get',
+              property: 'Power',
             };
             const onValue = await retry(
               this.initRequest.bind<BaseDevice, DeviceRequest, Promise<number>>(
@@ -59,12 +59,12 @@ export class Fan extends BaseDevice {
         ) => {
           try {
             const request: DeviceRequest = {
-              DeviceId: id,
-              DeviceType: type,
-              MessageType: 'Request',
-              Operation: 'Set',
-              Property: 'Power',
-              Value: (on as number) ? 1 : 0,
+              deviceId: id,
+              deviceType: type,
+              messageType: 'Request',
+              operation: 'Set',
+              property: 'Power',
+              value: (on as number) ? 1 : 0,
             };
             const isValid = await this.isSetPowerValid();
 
@@ -79,13 +79,13 @@ export class Fan extends BaseDevice {
       );
 
     platform.on(`Event-${type}-${id}-Set-Power`, (on: number) => {
-      onCharacteristic?.updateValue(Boolean(on));
+      onCharacteristic.updateValue(Boolean(on));
     });
 
     const rotationSpeedCharacteristic = fanService
       .getCharacteristic(Characteristic.RotationSpeed)
-      ?.setProps({
-        format: Characteristic.Formats.FLOAT,
+      .setProps({
+        format: Formats.FLOAT,
         maxValue: 100,
         minStep: 33.333,
         minValue: 0,
@@ -101,11 +101,11 @@ export class Fan extends BaseDevice {
         async (callback: CharacteristicGetCallback) => {
           try {
             const request: DeviceRequest = {
-              DeviceId: id,
-              DeviceType: type,
-              MessageType: 'Request',
-              Operation: 'Get',
-              Property: 'Speed',
+              deviceId: id,
+              deviceType: type,
+              messageType: 'Request',
+              operation: 'Get',
+              property: 'Speed',
             };
             const speed = await retry(
               this.initRequest.bind<BaseDevice, DeviceRequest, Promise<number>>(
@@ -127,12 +127,12 @@ export class Fan extends BaseDevice {
         ) => {
           try {
             const request: DeviceRequest = {
-              DeviceId: id,
-              DeviceType: type,
-              MessageType: 'Request',
-              Operation: 'Set',
-              Property: 'Speed',
-              Value: Math.round(speedPercentage as number),
+              deviceId: id,
+              deviceType: type,
+              messageType: 'Request',
+              operation: 'Set',
+              property: 'Speed',
+              value: Math.round(speedPercentage as number),
             };
             this.setSpeedPending = true;
             await sleep(this.setRequestDelay);
@@ -147,11 +147,11 @@ export class Fan extends BaseDevice {
       );
 
     platform.on(`Event-${type}-${id}-Set-Speed`, (speed: number) => {
-      rotationSpeedCharacteristic?.updateValue(speed);
+      rotationSpeedCharacteristic.updateValue(speed);
     });
   }
 
-  async isSetPowerValid() {
+  async isSetPowerValid(): Promise<boolean> {
     if (!this.setSpeedPending) {
       await sleep(this.setRequestDelay);
     }

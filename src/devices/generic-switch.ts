@@ -26,16 +26,16 @@ export class GenericSwitch extends BaseDevice {
 
     const onCharacteristic = switchService
       .getCharacteristic(Characteristic.On)
-      ?.on(
+      .on(
         CharacteristicEventTypes.GET,
         async (callback: CharacteristicGetCallback) => {
           try {
             const request: DeviceRequest = {
-              DeviceId: id,
-              DeviceType: type,
-              MessageType: 'Request',
-              Operation: 'Get',
-              Property: 'Power',
+              deviceId: id,
+              deviceType: type,
+              messageType: 'Request',
+              operation: 'Get',
+              property: 'Power',
             };
             const onValue = await retry(
               this.initRequest.bind<BaseDevice, DeviceRequest, Promise<number>>(
@@ -57,12 +57,12 @@ export class GenericSwitch extends BaseDevice {
         ) => {
           try {
             const request: DeviceRequest = {
-              DeviceId: id,
-              DeviceType: type,
-              MessageType: 'Request',
-              Operation: 'Set',
-              Property: 'Power',
-              Value: (on as number) ? 1 : 0,
+              deviceId: id,
+              deviceType: type,
+              messageType: 'Request',
+              operation: 'Set',
+              property: 'Power',
+              value: (on as number) ? 1 : 0,
             };
             await retry(this.initRequest.bind(this, request));
             callback();
@@ -73,7 +73,7 @@ export class GenericSwitch extends BaseDevice {
       );
 
     platform.on(`Event-${type}-${id}-Set-Power`, (on: number) => {
-      onCharacteristic?.updateValue(Boolean(on));
+      onCharacteristic.updateValue(Boolean(on));
     });
   }
 }

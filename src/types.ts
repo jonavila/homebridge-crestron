@@ -28,12 +28,12 @@ export type DeviceType =
   | 'Television';
 
 export interface DeviceRequest {
-  DeviceId: number;
-  DeviceType: DeviceType;
-  MessageType: 'Request';
-  Operation: RequestOperation;
-  Property: RequestProperty;
-  Value?: number | string;
+  deviceId: number;
+  deviceType: DeviceType;
+  messageType: 'Request';
+  operation: RequestOperation;
+  property: RequestProperty;
+  value?: number | string;
 }
 
 type RequestOperation = 'Get' | 'Set';

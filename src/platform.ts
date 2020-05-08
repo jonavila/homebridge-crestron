@@ -3,13 +3,19 @@ import {
   AccessoryPlugin,
   API,
   Logging,
-  PlatformConfig,
   StaticPlatformPlugin,
 } from 'homebridge';
-import { DeviceConfig, DeviceRequest, DeviceType } from './types';
-import EventEmitter from 'events';
-import { Fan, GenericSwitch, LightDimmer, LightSwitch } from './devices';
+import { DeviceRequest, DeviceType, PlatformConfig } from './types';
+import { EventEmitter } from 'events';
+import {
+  Fan,
+  GenericSwitch,
+  LightDimmer,
+  LightSwitch,
+  Television,
+} from './devices';
 import { forEach, groupBy } from 'lodash';
+import { parseJSON } from './utils';
 
 export class Platform extends EventEmitter implements StaticPlatformPlugin {
   log: Logging;
@@ -18,6 +24,7 @@ export class Platform extends EventEmitter implements StaticPlatformPlugin {
   socket: net.Socket = new net.Socket();
   pendingGetRequests: Map<string, string> = new Map<string, string>();
   pendingSetRequests: Map<string, string> = new Map<string, string>();
+  private bufferedData: string = '';
 
   constructor(log: Logging, config: PlatformConfig, api: API) {
     super();
@@ -27,7 +34,9 @@ export class Platform extends EventEmitter implements StaticPlatformPlugin {
     const { host, port } = this.config;
 
     // logs socket error messages
-    this.socket.on('error', this.log.error);
+    this.socket.on('error', (error) => {
+      this.log.error(error.message);
+    });
 
     //handle socket close
     this.socket.on('close', () => {
@@ -59,7 +68,7 @@ export class Platform extends EventEmitter implements StaticPlatformPlugin {
     );
   }
 
-  accessories(callback: (accessories: AccessoryPlugin[]) => void) {
+  accessories(callback: (accessories: AccessoryPlugin[]) => void): void {
     const accessories: AccessoryPlugin[] = [];
     const { devices } = this.config;
     const devicesByType = groupBy(devices, (device) => device.type);
@@ -69,7 +78,7 @@ export class Platform extends EventEmitter implements StaticPlatformPlugin {
       in the config file by type and we call the appropriate device constructor.
      */
     forEach(devicesByType, (devices, type) => {
-      devices.forEach((config: DeviceConfig) => {
+      devices.forEach((config) => {
         let accessory;
         switch (type as DeviceType) {
           case 'LightSwitch':
@@ -113,64 +122,67 @@ export class Platform extends EventEmitter implements StaticPlatformPlugin {
     Since messages are received in a TCP socket stream, we use a double-pipe (||)
     to delimit them. We split the stream and retain messages where length > 0
  */
-  receiveResponses(data: Buffer) {
-    const jsonMessages = data
-      .toString()
-      .split('||')
-      .filter((jsonMessage) => jsonMessage.length > 0);
-    jsonMessages.forEach((jsonMessage) => {
-      const message = JSON.parse(jsonMessage);
+  receiveResponses(data: Buffer): void {
+    this.bufferedData += data;
+    let received = this.bufferedData.split('\n');
 
-      const {
-        MessageType: messageType,
-        DeviceType: deviceType,
-        DeviceId: deviceId,
-        Operation: operation,
-        Property: property,
-        Value: value,
-      } = message;
-
-      /*
-        When Homebridge sends a message with a `Set` operation, the Crestron
-        module will pulse DIGITAL_OUTPUT or a ANALOG_OUTPUT signals. These
-        signals will trigger commands on the connected devices and feedback
-        from those devices will generate `Event` messages back to Homebridge.
-
-        Upon receiving an `Event` message, we check if a `Set` request is pending
-        for that device. If the pending request exists, we emit a `Response` event
-        so that Homebridge receives the acknowledgement from Crestron that the
-        message was processed.
-
-        If an `Event` message is received and there are no pending `Set` requests,
-        this means that an event occurred on the Crestron side from an action
-        not triggered by Homebridge (e.g. Keypad press). In this case, we emit a
-        `Event` message and handle it accordingly.
-       */
-      if (
-        messageType === 'Event' &&
-        this.pendingSetRequests.has(`${deviceType}-${deviceId}-${property}`)
-      ) {
-        this.emit(
-          `Response-${deviceType}-${deviceId}-${operation}-${property}`,
-        );
-
-        return;
-      }
-
-      this.emit(
-        `${messageType}-${deviceType}-${deviceId}-${operation}-${property}`,
-        value,
-      );
-    });
+    while (received.length > 1) {
+      this.processMessage(received[0]);
+      this.bufferedData = received.slice(1).join('\n');
+      received = this.bufferedData.split('\n');
+    }
   }
 
-  removeRequest(request: DeviceRequest) {
+  processMessage(jsonMessage: string) {
+    const message = parseJSON(jsonMessage);
+
+    if (message instanceof Error) {
+      this.log.error(message.message);
+      return;
+    }
+
     const {
-      DeviceId: deviceId,
+      MessageType: messageType,
       DeviceType: deviceType,
+      DeviceId: deviceId,
       Operation: operation,
       Property: property,
-    } = request;
+      Value: value,
+    } = message;
+
+    /*
+      When Homebridge sends a message with a `Set` operation, the Crestron
+      module will pulse DIGITAL_OUTPUT or a ANALOG_OUTPUT signals. These
+      signals will trigger commands on the connected devices and feedback
+      from those devices will generate `Event` messages back to Homebridge.
+
+      Upon receiving an `Event` message, we check if a `Set` request is pending
+      for that device. If the pending request exists, we emit a `Response` event
+      so that Homebridge receives the acknowledgement from Crestron that the
+      message was processed.
+
+      If an `Event` message is received and there are no pending `Set` requests,
+      this means that an event occurred on the Crestron side from an action
+      not triggered by Homebridge (e.g. Keypad press). In this case, we emit a
+      `Event` message and handle it accordingly.
+     */
+    if (
+      messageType === 'Event' &&
+      this.pendingSetRequests.has(`${deviceType}-${deviceId}-${property}`)
+    ) {
+      this.emit(`Response-${deviceType}-${deviceId}-${operation}-${property}`);
+
+      return;
+    }
+
+    this.emit(
+      `${messageType}-${deviceType}-${deviceId}-${operation}-${property}`,
+      value,
+    );
+  }
+
+  removeRequest(request: DeviceRequest): void {
+    const { deviceId, deviceType, operation, property } = request;
     const requestKey = `${deviceType}-${deviceId}-${property}`;
 
     if (operation === 'Get') {
@@ -180,15 +192,10 @@ export class Platform extends EventEmitter implements StaticPlatformPlugin {
     }
   }
 
-  sendRequest(request: DeviceRequest) {
-    const {
-      DeviceId: deviceId,
-      DeviceType: deviceType,
-      Operation: operation,
-      Property: property,
-    } = request;
+  sendRequest(request: DeviceRequest): void {
+    const { deviceId, deviceType, operation, property } = request;
     const requestKey = `${deviceType}-${deviceId}-${property}`;
-    const requestBody = `${JSON.stringify(request)}||`;
+    const requestBody = JSON.stringify(request) + '\n';
     this.socket.write(requestBody);
 
     if (operation === 'Get') {

@@ -29,16 +29,16 @@ export class LightDimmer extends BaseDevice {
 
     const onCharacteristic = lightBulbService
       .getCharacteristic(Characteristic.On)
-      ?.on(
+      .on(
         CharacteristicEventTypes.GET,
         async (callback: CharacteristicGetCallback) => {
           try {
             const request: DeviceRequest = {
-              DeviceId: id,
-              DeviceType: type,
-              MessageType: 'Request',
-              Operation: 'Get',
-              Property: 'Power',
+              deviceId: id,
+              deviceType: type,
+              messageType: 'Request',
+              operation: 'Get',
+              property: 'Power',
             };
             const onValue = await retry(
               this.initRequest.bind<BaseDevice, DeviceRequest, Promise<number>>(
@@ -60,12 +60,12 @@ export class LightDimmer extends BaseDevice {
         ) => {
           try {
             const request: DeviceRequest = {
-              DeviceId: id,
-              DeviceType: type,
-              MessageType: 'Request',
-              Operation: 'Set',
-              Property: 'Power',
-              Value: on ? 1 : 0,
+              deviceId: id,
+              deviceType: type,
+              messageType: 'Request',
+              operation: 'Set',
+              property: 'Power',
+              value: on ? 1 : 0,
             };
             const isValid = await this.isSetPowerValid();
 
@@ -80,21 +80,21 @@ export class LightDimmer extends BaseDevice {
       );
 
     platform.on(`Event-${type}-${id}-Set-Power`, (on: number) => {
-      onCharacteristic?.updateValue(Boolean(on));
+      onCharacteristic.updateValue(Boolean(on));
     });
 
     const brightnessCharacteristic = lightBulbService
       .getCharacteristic(Characteristic.Brightness)
-      ?.on(
+      .on(
         CharacteristicEventTypes.GET,
         async (callback: CharacteristicGetCallback) => {
           try {
             const request: DeviceRequest = {
-              DeviceId: id,
-              DeviceType: type,
-              MessageType: 'Request',
-              Operation: 'Get',
-              Property: 'Level',
+              deviceId: id,
+              deviceType: type,
+              messageType: 'Request',
+              operation: 'Get',
+              property: 'Level',
             };
             const level = await retry(
               this.initRequest.bind<BaseDevice, DeviceRequest, Promise<number>>(
@@ -116,12 +116,12 @@ export class LightDimmer extends BaseDevice {
         ) => {
           try {
             const request: DeviceRequest = {
-              DeviceId: id,
-              DeviceType: type,
-              MessageType: 'Request',
-              Operation: 'Set',
-              Property: 'Level',
-              Value: ((brightnessPercentage as number) / 100) * 65535,
+              deviceId: id,
+              deviceType: type,
+              messageType: 'Request',
+              operation: 'Set',
+              property: 'Level',
+              value: ((brightnessPercentage as number) / 100) * 65535,
             };
             this.setLevelPending = true;
             await sleep(this.setRequestDelay);
@@ -136,7 +136,7 @@ export class LightDimmer extends BaseDevice {
       );
 
     platform.on(`Event-${type}-${id}-Set-Level`, (level: number) => {
-      brightnessCharacteristic?.updateValue((level * 100) / 65535);
+      brightnessCharacteristic.updateValue((level * 100) / 65535);
     });
   }
 
