@@ -14,6 +14,12 @@ export interface DeviceConfig {
   model: string;
 }
 
+// type TelevisionSourceConfig = {
+//   id: number;
+//   type: number;
+//   name: string;
+// };
+
 export type DeviceType =
   | 'LightSwitch'
   | 'LightDimmer'
@@ -32,4 +38,4 @@ export interface DeviceRequest {
 
 type RequestOperation = 'Get' | 'Set';
 
-export type RequestProperty = 'Power' | 'Level' | 'Speed';
+export type RequestProperty = 'Power' | 'Level' | 'Speed' /* | 'Source'*/;

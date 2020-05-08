@@ -88,6 +88,10 @@ export class Platform extends EventEmitter implements StaticPlatformPlugin {
             accessory = new Fan(this.log, config, this);
             break;
 
+          case 'Television':
+            accessory = new Television(this.log, config, this);
+            break;
+
           default:
             this.log.warn(
               `Unable to find an accessory constructor for device: ${config.name} with type: ${config.type}`,
