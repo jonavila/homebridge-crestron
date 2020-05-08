@@ -12,6 +12,7 @@ export interface DeviceConfig {
   name: string;
   manufacturer: string;
   model: string;
+  timeout?: number;
 }
 
 // type TelevisionSourceConfig = {

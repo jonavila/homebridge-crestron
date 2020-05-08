@@ -17,7 +17,7 @@ export class LightDimmer extends BaseDevice {
   constructor(log: Logging, config: DeviceConfig, platform: Platform) {
     super(log, config, platform);
 
-    const { id, type } = this.config;
+    const { id, timeout, type } = this.config;
     const { homebridge } = this.platform;
     const {
       hap: { Characteristic, Service },
@@ -41,10 +41,7 @@ export class LightDimmer extends BaseDevice {
               property: 'Power',
             };
             const onValue = await retry(
-              this.initRequest.bind<BaseDevice, DeviceRequest, Promise<number>>(
-                this,
-                request,
-              ),
+              this.initRequest.bind(this, request, timeout),
             );
             callback(null, Boolean(onValue));
           } catch (error) {
@@ -70,7 +67,7 @@ export class LightDimmer extends BaseDevice {
             const isValid = await this.isSetPowerValid();
 
             if (isValid) {
-              await retry(this.initRequest.bind(this, request));
+              await retry(this.initRequest.bind(this, request, timeout));
             }
             callback();
           } catch (error) {
@@ -97,12 +94,9 @@ export class LightDimmer extends BaseDevice {
               property: 'Level',
             };
             const level = await retry(
-              this.initRequest.bind<BaseDevice, DeviceRequest, Promise<number>>(
-                this,
-                request,
-              ),
+              this.initRequest.bind(this, request, timeout, timeout),
             );
-            callback(null, (level * 100) / 65535);
+            callback(null, (level! * 100) / 65535);
           } catch (error) {
             callback(error, false);
           }
@@ -125,7 +119,7 @@ export class LightDimmer extends BaseDevice {
             };
             this.setLevelPending = true;
             await sleep(this.setRequestDelay);
-            await retry(this.initRequest.bind(this, request));
+            await retry(this.initRequest.bind(this, request, timeout));
             callback();
           } catch (error) {
             callback(error);

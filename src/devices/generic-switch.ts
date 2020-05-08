@@ -14,7 +14,7 @@ export class GenericSwitch extends BaseDevice {
   constructor(log: Logging, config: DeviceConfig, platform: Platform) {
     super(log, config, platform);
 
-    const { id, type } = this.config;
+    const { id, timeout, type } = this.config;
     const { homebridge } = this.platform;
     const {
       hap: { Characteristic, Service },
@@ -38,10 +38,7 @@ export class GenericSwitch extends BaseDevice {
               property: 'Power',
             };
             const onValue = await retry(
-              this.initRequest.bind<BaseDevice, DeviceRequest, Promise<number>>(
-                this,
-                request,
-              ),
+              this.initRequest.bind(this, request, timeout),
             );
             callback(null, Boolean(onValue));
           } catch (error) {
@@ -64,7 +61,7 @@ export class GenericSwitch extends BaseDevice {
               property: 'Power',
               value: (on as number) ? 1 : 0,
             };
-            await retry(this.initRequest.bind(this, request));
+            await retry(this.initRequest.bind(this, request, timeout));
             callback();
           } catch (error) {
             callback(error);

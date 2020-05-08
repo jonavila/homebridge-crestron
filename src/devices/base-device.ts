@@ -35,14 +35,10 @@ export class BaseDevice implements AccessoryPlugin {
 
   async initRequest<T extends number | undefined>(
     request: DeviceRequest,
+    timeout?: number,
   ): Promise<T> {
-    const REQUEST_TIMEOUT = 2000;
-    const {
-      DeviceId: id,
-      DeviceType: type,
-      Operation: operation,
-      Property: property,
-    } = request;
+    const REQUEST_TIMEOUT = timeout || 2000;
+    const { deviceId: id, deviceType: type, operation, property } = request;
 
     return new Promise<T>((resolve, reject) => {
       const { platform } = this;

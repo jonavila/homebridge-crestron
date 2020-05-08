@@ -16,7 +16,7 @@ export class Fan extends BaseDevice {
   constructor(log: Logging, config: DeviceConfig, platform: Platform) {
     super(log, config, platform);
 
-    const { id, type } = this.config;
+    const { id, timeout, type } = this.config;
     const { homebridge } = platform;
     const {
       hap: { Characteristic, Service },
@@ -40,10 +40,7 @@ export class Fan extends BaseDevice {
               property: 'Power',
             };
             const onValue = await retry(
-              this.initRequest.bind<BaseDevice, DeviceRequest, Promise<number>>(
-                this,
-                request,
-              ),
+              this.initRequest.bind(this, request, timeout),
             );
             callback(null, Boolean(onValue));
           } catch (error) {
@@ -69,7 +66,7 @@ export class Fan extends BaseDevice {
             const isValid = await this.isSetPowerValid();
 
             if (isValid) {
-              await retry(this.initRequest.bind(this, request));
+              await retry(this.initRequest.bind(this, request, timeout));
             }
             callback();
           } catch (error) {
@@ -108,10 +105,7 @@ export class Fan extends BaseDevice {
               property: 'Speed',
             };
             const speed = await retry(
-              this.initRequest.bind<BaseDevice, DeviceRequest, Promise<number>>(
-                this,
-                request,
-              ),
+              this.initRequest.bind(this, request, timeout),
             );
             callback(null, speed);
           } catch (error) {
@@ -136,7 +130,7 @@ export class Fan extends BaseDevice {
             };
             this.setSpeedPending = true;
             await sleep(this.setRequestDelay);
-            await retry(this.initRequest.bind(this, request));
+            await retry(this.initRequest.bind(this, request, timeout));
             callback();
           } catch (error) {
             callback(error);
