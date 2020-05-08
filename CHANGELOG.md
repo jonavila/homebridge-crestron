@@ -1,5 +1,11 @@
 # @jonavila/homebridge-crestron
 
+## 2.1.0-next.2
+
+### Patch Changes
+
+- Add support for Television devices
+
 ## 2.1.0-next.1
 
 ### Patch Changes

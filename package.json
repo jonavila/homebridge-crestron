@@ -1,13 +1,11 @@
 {
   "name": "@jonavila/homebridge-crestron",
   "author": "Jonathan Avila",
-  "version": "2.1.0-next.1",
+  "version": "2.1.0-next.2",
   "license": "MIT",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "keywords": [
     "homebridge-plugin"
   ],
