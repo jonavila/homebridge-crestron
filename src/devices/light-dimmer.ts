@@ -134,7 +134,7 @@ export class LightDimmer extends BaseDevice {
     });
   }
 
-  async isSetPowerValid() {
+  async isSetPowerValid(): Promise<boolean> {
     if (!this.setLevelPending) {
       await sleep(this.setRequestDelay);
     }
