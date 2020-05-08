@@ -1,5 +1,11 @@
 # @jonavila/homebridge-crestron
 
+## 2.1.0-next.3
+
+### Patch Changes
+
+- Increase default timeout of devices to 3000 ms
+
 ## 2.1.0-next.2
 
 ### Patch Changes
