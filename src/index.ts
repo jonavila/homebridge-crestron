@@ -1,6 +1,6 @@
-import { Platform } from './Platform';
-import { Homebridge } from './@types';
+import { API } from 'homebridge';
+import { Platform } from './platform';
 
-export default function(homebridge: Homebridge) {
-  homebridge.registerPlatform('homebridge-crestron-simpl', 'Crestron', Platform);
+export default function (homebridge: API) {
+  homebridge.registerPlatform('Crestron', Platform);
 }

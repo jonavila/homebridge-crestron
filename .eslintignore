@@ -1,0 +1,6 @@
+dist
+errors
+ide
+node_modules
+.eslintrc.js
+jest.*.js
